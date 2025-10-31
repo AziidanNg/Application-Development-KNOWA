@@ -44,3 +44,6 @@ Our solution is an integrated platform with 6 key features:
 ### Acknowledgements
 
 We would like to express our deepest gratitude to our early adopter and partner organization, **Pertubuhan Ilmiah Pulau Pinang (KNOWA)**, for providing invaluable insights and serving as our primary case study for requirement analysis and alpha testing.
+
+### Prototype
+[View our Prototype](https://www.figma.com/proto/Znl227g8wX7RoJN45AdENe/AD-Wireframe?t=nSRMsVYNjHSq8RKW-1&scaling=scale-down&content-scaling=fixed&page-id=0%3A1&node-id=2026-246&starting-point-node-id=2026%3A246)
