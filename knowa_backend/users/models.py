@@ -1,0 +1,42 @@
+# users/models.py
+from django.db import models
+from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.utils.translation import gettext_lazy as _
+
+class User(AbstractUser):
+    
+    # --- UPDATED CHOICES ---
+    class MemberStatus(models.TextChoices):
+        PUBLIC = 'PUBLIC', 'Public User'     # Default user who can participate
+        PENDING = 'PENDING', 'Pending Member' # Clicked "Apply Here"
+        MEMBER = 'MEMBER', 'NGO Member'     # Approved by Admin (Staff/Organizer)
+        REJECTED = 'REJECTED', 'Rejected'
+    
+    # --- UPDATED FIELD ---
+    member_status = models.CharField(
+        max_length=10,
+        choices=MemberStatus.choices,
+        default=MemberStatus.PUBLIC  # <-- Default is now PUBLIC
+    )
+
+    # --- FIX from last time ---
+    groups = models.ManyToManyField(
+        Group,
+        verbose_name=_('groups'),
+        blank=True,
+        help_text=_(
+            'The groups this user belongs to. A user will get all permissions '
+            'granted to each of their groups.'
+        ),
+        related_name="custom_user_groups", 
+        related_query_name="user",
+    )
+
+    user_permissions = models.ManyToManyField(
+        Permission,
+        verbose_name=_('user permissions'),
+        blank=True,
+        help_text=_('Specific permissions for this user.'),
+        related_name="custom_user_permissions",
+        related_query_name="user",
+    )
