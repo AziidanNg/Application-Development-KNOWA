@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'corsheaders',
 
     # My Apps (This is the most important fix)
-    'users.apps.UsersConfig', 
+    'users.apps.UsersConfig',
+    'events',
 
     # Default Django Apps
     'django.contrib.admin',

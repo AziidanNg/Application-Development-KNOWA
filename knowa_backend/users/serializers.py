@@ -1,8 +1,21 @@
 # users/serializers.py
 from rest_framework import serializers
 from .models import User
+# Import the default token serializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-# This serializer is for user registration
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Add custom data to the token's payload
+        token['username'] = user.username
+        token['member_status'] = user.member_status
+        token['is_staff'] = user.is_staff
+
+        return token
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
 
@@ -14,20 +27,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-        # 1. Ensure passwords match
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": "Passwords must match."})
-        
-        # 2. Add validation for email/username formats here later (optional)
-
         return data
 
     def create(self, validated_data):
-        # This creates the user in the database
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
-            # New users default to PENDING status as defined in models.py
+            # The model default is 'PUBLIC'
         )
         return user

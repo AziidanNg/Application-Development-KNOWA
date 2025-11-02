@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/screens/register_screen.dart'; // Fixed import
 import 'package:knowa_frontend/services/auth_service.dart'; // Fixed import
-// import 'package:knowa_frontend/screens/dashboard_screen.dart'; 
+import 'package:knowa_frontend/screens/dashboard_screen.dart'; 
+import 'package:knowa_frontend/screens/admin_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,30 +19,38 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // THIS IS THE FUNCTION FOR THE "LOGIN" BUTTON
   void _handleLogin() async {
-    setState(() { _isLoading = true; });
+  setState(() { _isLoading = true; });
 
-    bool success = await _authService.loginUser( // <-- This correctly calls loginUser
-      _usernameController.text,
-      _passwordController.text,
-    );
+  // This now returns a Map (the user data) or null (if login failed)
+  final userData = await _authService.loginUser(
+    _usernameController.text,
+    _passwordController.text,
+  );
 
-    setState(() { _isLoading = false; });
-    if (!mounted) return;
+  setState(() { _isLoading = false; });
+  if (!mounted) return;
 
-    if (success) {
-       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login Successful!'), backgroundColor: Colors.green),
+  if (userData != null) {
+    // --- THIS IS THE NEW NAVIGATION LOGIC ---
+    if (userData['is_staff'] == true) {
+      // User is an ADMIN
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
       );
-      // TODO: Navigate to Home Screen
-      // Navigator.of(context).pushReplacement(
-      //   MaterialPageRoute(builder: (context) => const DashboardScreen()),
-      // );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login Failed. Check username/password.'), backgroundColor: Colors.red),
+      // User is a PUBLIC USER or MEMBER
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
       );
     }
+
+  } else {
+    // Login failed (wrong password)
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Login Failed. Check username/password.'), backgroundColor: Colors.red),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

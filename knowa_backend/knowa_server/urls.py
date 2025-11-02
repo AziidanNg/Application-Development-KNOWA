@@ -23,4 +23,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # Include all URLs from your 'users' app
     path('api/users/', include('users.urls')), 
+    path('api/events/', include('events.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) # For serving media/images
