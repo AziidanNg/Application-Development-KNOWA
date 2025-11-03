@@ -1,8 +1,10 @@
+// lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
-import 'package:knowa_frontend/screens/register_screen.dart'; // Fixed import
-import 'package:knowa_frontend/services/auth_service.dart'; // Fixed import
-import 'package:knowa_frontend/screens/dashboard_screen.dart'; 
 import 'package:knowa_frontend/screens/admin_dashboard_screen.dart';
+import 'package:knowa_frontend/screens/dashboard_screen.dart';
+import 'package:knowa_frontend/screens/register_screen.dart';
+import 'package:knowa_frontend/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // <-- 1. ADD THIS IMPORT
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,44 +18,73 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordHidden = true;
+  bool _rememberMe = false;
+  
+  // --- 2. ADD THIS LIFECYCLE METHOD ---
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedUser();
+  }
 
-  // THIS IS THE FUNCTION FOR THE "LOGIN" BUTTON
+  // --- 3. ADD THIS NEW FUNCTION ---
+  // This function runs when the app first opens
+  void _loadRememberedUser() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? savedUsername = prefs.getString('remembered_username');
+
+    if (savedUsername != null) {
+      setState(() {
+        _usernameController.text = savedUsername;
+        _rememberMe = true;
+      });
+    }
+  }
+
+  // --- 4. UPDATE THIS FUNCTION ---
   void _handleLogin() async {
-  setState(() { _isLoading = true; });
+    setState(() { _isLoading = true; });
 
-  // This now returns a Map (the user data) or null (if login failed)
-  final userData = await _authService.loginUser(
-    _usernameController.text,
-    _passwordController.text,
-  );
-
-  setState(() { _isLoading = false; });
-  if (!mounted) return;
-
-  if (userData != null) {
-    // --- THIS IS THE NEW NAVIGATION LOGIC ---
-    if (userData['is_staff'] == true) {
-      // User is an ADMIN
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-      );
+    // --- NEW LOGIC ---
+    // Save or remove the username *before* logging in
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (_rememberMe) {
+      await prefs.setString('remembered_username', _usernameController.text);
     } else {
-      // User is a PUBLIC USER or MEMBER
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      await prefs.remove('remembered_username');
+    }
+    // --- END OF NEW LOGIC ---
+
+    final userData = await _authService.loginUser(
+      _usernameController.text,
+      _passwordController.text,
+    );
+
+    setState(() { _isLoading = false; });
+    if (!mounted) return;
+
+    if (userData != null) {
+      if (userData['is_staff'] == true) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login Failed. Check username/password.'), backgroundColor: Colors.red),
       );
     }
-
-  } else {
-    // Login failed (wrong password)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Login Failed. Check username/password.'), backgroundColor: Colors.red),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
+    // ... (Your build method code is identical, no changes needed here) ...
+    // ... (The rest of your build method) ...
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -68,14 +99,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 40),
             
-            // --- REPLACE WITH THIS ---
             Text("Username", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
             const SizedBox(height: 8),
             TextField(
-              controller: _usernameController,
-              keyboardType: TextInputType.text, // <-- Change this
+              controller: _usernameController, // This is now set by _loadRememberedUser
+              keyboardType: TextInputType.text,
               decoration: InputDecoration(
-                hintText: "Enter your username", // <-- Change this
+                hintText: "Enter your username",
                 prefixIcon: Icon(Icons.person_outline, color: Colors.grey.shade500),
                 filled: true,
                 fillColor: Colors.grey.shade100,
@@ -91,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _passwordController,
-              obscureText: true,
+              obscureText: _isPasswordHidden,
               decoration: InputDecoration(
                 hintText: "Enter your password",
                 prefixIcon: Icon(Icons.lock_outline, color: Colors.grey.shade500),
@@ -101,22 +131,51 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(8.0),
                   borderSide: BorderSide.none,
                 ),
-                suffixIcon: Icon(Icons.visibility_off_outlined, color: Colors.grey.shade500),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isPasswordHidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    color: Colors.grey.shade500,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordHidden = !_isPasswordHidden;
+                    });
+                  },
+                ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text("Forgot Password?", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _rememberMe, // This is now set by _loadRememberedUser
+                      onChanged: (value) {
+                        setState(() {
+                          _rememberMe = value ?? false;
+                        });
+                      },
+                    ),
+                    const Text("Remember me"),
+                  ],
+                ),
+                TextButton(
+                  onPressed: () {
+                    // TODO: Navigate to Forgot Password screen
+                  },
+                  child: Text("Forgot Password?", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+                ),
+              ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
 
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                // THIS BUTTON CORRECTLY CALLS _handleLogin
                 onPressed: _isLoading ? null : _handleLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade700,
