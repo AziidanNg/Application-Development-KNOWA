@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
+import 'package:knowa_frontend/screens/admin_manage_applications_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -71,7 +72,12 @@ class AdminDashboardScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildActionButton(
               title: 'Member Applications',
-              onPressed: () { /* TODO: Navigate to applications */ },
+              onPressed: () { Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => const AdminManageApplicationsScreen(),
+                                ),
+                              ); 
+              },
               isPrimary: true,
             ),
             const SizedBox(height: 12),
