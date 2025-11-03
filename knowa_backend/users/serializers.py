@@ -23,7 +23,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'password2']
+        fields = [
+            'username', 
+            'email', 
+            'first_name', # This is for "Name"
+            'phone', 
+            'interests',
+            'password', 
+            'password2'
+        ]
         extra_kwargs = {
             'password': {'write_only': True}
         }
@@ -38,6 +46,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
+            # --- ADD THE NEW FIELDS HERE ---
+            first_name=validated_data.get('first_name', ''),
+            phone=validated_data.get('phone', ''),
+            interests=validated_data.get('interests', '')
             # The model default is 'PUBLIC'
         )
         return user

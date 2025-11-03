@@ -20,6 +20,9 @@ class User(AbstractUser):
         default=MemberStatus.PUBLIC  # <-- Default is now PUBLIC
     )
 
+    phone = models.CharField(max_length=20, blank=True) # For Phone Number
+    interests = models.CharField(max_length=255, blank=True) # Will store "Education,Arts"
+
     # --- FIX from last time ---
     groups = models.ManyToManyField(
         Group,

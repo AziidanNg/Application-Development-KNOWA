@@ -10,28 +10,41 @@ class AuthService {
   final _storage = const FlutterSecureStorage();
 
   // --- REGISTRATION ---
-  Future<Map<String, dynamic>> registerUser(String username, String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('${_baseUrl}register/'),
-        headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode(<String, String>{
-          'username': username,
-          'email': email,
-          'password': password,
-          'password2': password, // Our serializer needs this to confirm
-        }),
-      );
+  Future<Map<String, dynamic>> registerUser({
+  required String name,
+  required String email,
+  required String phone,
+  required String password,
+  required List<String> interests,
+  }) async {
+  try {
+    // --- NEW: Join the interests list into a single string ---
+    String interestsString = interests.join(','); // e.g., "Education,Arts"
 
-      if (response.statusCode == 201) {
-        return {'success': true, 'data': jsonDecode(response.body)};
-      } else {
-        return {'success': false, 'error': jsonDecode(response.body)};
-      }
-    } catch (e) {
-      return {'success': false, 'error': 'Connection failed. Is the server running?'};
+    final response = await http.post(
+      Uri.parse('${_baseUrl}register/'),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode(<String, String>{
+        // We'll use the email as the username for simplicity
+        'username': email, 
+        'email': email,
+        'first_name': name, // This is for the "Name" field
+        'phone': phone,
+        'interests': interestsString,
+        'password': password,
+        'password2': password,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      return {'success': true, 'data': jsonDecode(response.body)};
+    } else {
+      return {'success': false, 'error': jsonDecode(response.body)};
     }
+  } catch (e) {
+    return {'success': false, 'error': 'Connection failed. Is the server running?'};
   }
+}
 
   // --- LOGIN ---
   Future<Map<String, dynamic>?> loginUser(String username, String password) async {
