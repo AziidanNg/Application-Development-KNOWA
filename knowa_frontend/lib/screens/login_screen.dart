@@ -1,10 +1,9 @@
-// lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/screens/admin_dashboard_screen.dart';
 import 'package:knowa_frontend/screens/dashboard_screen.dart';
 import 'package:knowa_frontend/screens/register_screen.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // <-- 1. ADD THIS IMPORT
+import 'package:shared_preferences/shared_preferences.dart'; // Make sure this is imported
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,21 +14,20 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
-  final _usernameController = TextEditingController();
+  final _usernameController = TextEditingController(); // We use this for Email
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordHidden = true;
   bool _rememberMe = false;
   
-  // --- 2. ADD THIS LIFECYCLE METHOD ---
+  // This function runs when the screen first loads
   @override
   void initState() {
     super.initState();
     _loadRememberedUser();
   }
 
-  // --- 3. ADD THIS NEW FUNCTION ---
-  // This function runs when the app first opens
+  // This reads the saved username from storage
   void _loadRememberedUser() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? savedUsername = prefs.getString('remembered_username');
@@ -42,22 +40,20 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // --- 4. UPDATE THIS FUNCTION ---
+  // This runs when you tap the "Login" button
   void _handleLogin() async {
     setState(() { _isLoading = true; });
 
-    // --- NEW LOGIC ---
-    // Save or remove the username *before* logging in
+    // Save or remove the username based on the checkbox
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     if (_rememberMe) {
       await prefs.setString('remembered_username', _usernameController.text);
     } else {
       await prefs.remove('remembered_username');
     }
-    // --- END OF NEW LOGIC ---
 
     final userData = await _authService.loginUser(
-      _usernameController.text,
+      _usernameController.text, // This is sent as the "username" (which is the email)
       _passwordController.text,
     );
 
@@ -76,15 +72,13 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login Failed. Check username/password.'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Login Failed. Check email/password.'), backgroundColor: Colors.red),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... (Your build method code is identical, no changes needed here) ...
-    // ... (The rest of your build method) ...
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -99,14 +93,15 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 40),
             
-            Text("Username", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+            // This is the "Email" field
+            Text("Email", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
             const SizedBox(height: 8),
             TextField(
-              controller: _usernameController, // This is now set by _loadRememberedUser
-              keyboardType: TextInputType.text,
+              controller: _usernameController,
+              keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                hintText: "Enter your username",
-                prefixIcon: Icon(Icons.person_outline, color: Colors.grey.shade500),
+                hintText: "Enter your email",
+                prefixIcon: Icon(Icons.email_outlined, color: Colors.grey.shade500),
                 filled: true,
                 fillColor: Colors.grey.shade100,
                 border: OutlineInputBorder(
@@ -117,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 24),
 
+            // This is the "Password" field
             Text("Password", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
             const SizedBox(height: 8),
             TextField(
@@ -146,15 +142,17 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 16),
             
+            // This is the "Remember me" and "Forgot Password" row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
                     Checkbox(
-                      value: _rememberMe, // This is now set by _loadRememberedUser
+                      value: _rememberMe,
                       onChanged: (value) {
                         setState(() {
+                          // This just updates the checkbox's UI
                           _rememberMe = value ?? false;
                         });
                       },
@@ -172,6 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 16),
 
+            // Login Button
             SizedBox(
               width: double.infinity,
               height: 50,
@@ -190,6 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 32),
             
+            // Sign Up link
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
