@@ -7,9 +7,15 @@ class Event {
   final String description;
   final String location;
   final DateTime startTime;
-  final DateTime endTime; // <-- THE MISSING FIELD
+  final DateTime endTime;
   final String imageUrl;
   final String organizerUsername;
+  
+  // --- THE FIX: ADDING NEW FIELDS ---
+  final String status;   // For "DRAFT", "PUBLISHED"
+  final int capacity;
+  final String? calendarLink; // Make it nullable
+  final bool isOnline;
 
   Event({
     required this.id,
@@ -17,20 +23,21 @@ class Event {
     required this.description,
     required this.location,
     required this.startTime,
-    required this.endTime, // <-- ADDED TO CONSTRUCTOR
+    required this.endTime,
     required this.imageUrl,
     required this.organizerUsername,
+    
+    // --- ADD TO CONSTRUCTOR ---
+    required this.status,
+    required this.capacity,
+    this.calendarLink,
+    required this.isOnline,
   });
 
-  // This "factory constructor" builds an Event from the JSON data
   factory Event.fromJson(Map<String, dynamic> json) {
     
-    // Helper to build the full image URL
     String getFullImageUrl(String? imageUrl) {
-      if (imageUrl == null || imageUrl.isEmpty) {
-        return ''; // Return an empty string if no image
-      }
-      // Use 10.0.2.2 for Android emulator
+      if (imageUrl == null || imageUrl.isEmpty) return '';
       String baseUrl = defaultTargetPlatform == TargetPlatform.android 
                        ? 'http://10.0.2.2:8000' 
                        : 'http://127.0.0.1:8000';
@@ -43,9 +50,15 @@ class Event {
       description: json['description'],
       location: json['location'],
       startTime: DateTime.parse(json['start_time']),
-      endTime: DateTime.parse(json['end_time']), // <-- ADD THIS LINE
+      endTime: DateTime.parse(json['end_time']),
       imageUrl: getFullImageUrl(json['event_image']),
       organizerUsername: json['organizer_username'] ?? 'Unknown',
+
+      // --- ADD JSON PARSING FOR NEW FIELDS ---
+      status: json['status'] ?? 'DRAFT',
+      capacity: json['capacity'] ?? 0,
+      calendarLink: json['calendar_link'],
+      isOnline: json['is_online'] ?? false,
     );
   }
 }

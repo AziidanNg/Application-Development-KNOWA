@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:knowa_frontend/models/event.dart'; // Import the model we just made
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http_parser/http_parser.dart'; // For image uploads
 
 class EventService {
   // Use 10.0.2.2 for Android emulator
@@ -47,6 +49,68 @@ Future<Event> getEventDetails(int eventId) async {
   } catch (e) {
     // Connection error
     throw Exception('Connection failed: ${e.toString()}');
+  }
+}
+
+// --- ADD THIS NEW FUNCTION TO CREATE AN EVENT ---
+Future<Map<String, dynamic>> createEvent({
+  required String title,
+  required String description,
+  required String location,
+  required String startTime,
+  required String endTime,
+  required int capacity,
+  required String status,
+  required bool isOnline,
+  String? calendarLink,
+  // We'll add the image file later
+}) async {
+
+  final _storage = const FlutterSecureStorage();
+  final token = await _storage.read(key: 'access_token');
+
+  try {
+    // This is a "multi-part" request because it might include an image
+    var request = http.MultipartRequest('POST', Uri.parse(_baseUrl));
+
+    // Add all the text fields
+    request.fields['title'] = title;
+    request.fields['description'] = description;
+    request.fields['location'] = isOnline ? 'Online' : location; // Set location
+    request.fields['start_time'] = startTime;
+    request.fields['end_time'] = endTime;
+    request.fields['capacity'] = capacity.toString();
+    request.fields['status'] = status; // e.g., "DRAFT" or "PUBLISHED"
+    request.fields['is_online'] = isOnline.toString();
+    if (calendarLink != null && calendarLink.isNotEmpty) {
+      request.fields['calendar_link'] = calendarLink;
+    }
+
+    // Add the authorization token
+    request.headers['Authorization'] = 'Bearer $token';
+
+    // TODO: Add image file upload logic here
+    // if (imageFile != null) {
+    //   request.files.add(
+    //     await http.MultipartFile.fromPath(
+    //       'event_image',
+    //       imageFile.path,
+    //       contentType: MediaType('image', 'jpeg'), // Or 'png'
+    //     ),
+    //   );
+    // }
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 201) { // 201 means "Created"
+      return {'success': true, 'data': jsonDecode(response.body)};
+    } else {
+      return {'success': false, 'error': jsonDecode(response.body)};
+    }
+
+  } catch (e) {
+    return {'success': false, 'error': 'Connection failed: ${e.toString()}'};
   }
 }
 }
