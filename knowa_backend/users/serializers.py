@@ -4,6 +4,7 @@ from .models import User
 # Import the default token serializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+# --- SERIALIZER FOR CUSTOM LOGIN ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -16,6 +17,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         return token
 
+# --- SERIALIZER FOR REGISTRATION ---
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
 
@@ -39,3 +41,17 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             # The model default is 'PUBLIC'
         )
         return user
+
+# --- ADD THIS NEW SERIALIZER (THIS IS THE FIX) ---
+# This serializer is for Admins to view user details
+class AdminUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        # These are the fields the Admin will see
+        fields = [
+            'id', 
+            'username', 
+            'email', 
+            'member_status', 
+            'date_joined'
+        ]

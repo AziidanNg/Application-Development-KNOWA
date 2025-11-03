@@ -7,9 +7,10 @@ class User(AbstractUser):
     
     # --- UPDATED CHOICES ---
     class MemberStatus(models.TextChoices):
-        PUBLIC = 'PUBLIC', 'Public User'     # Default user who can participate
-        PENDING = 'PENDING', 'Pending Member' # Clicked "Apply Here"
-        MEMBER = 'MEMBER', 'NGO Member'     # Approved by Admin (Staff/Organizer)
+        PUBLIC = 'PUBLIC', 'Public User'
+        PENDING = 'PENDING', 'Pending Member'
+        INTERVIEW = 'INTERVIEW', 'Interview'  # <-- for interview option
+        MEMBER = 'MEMBER', 'NGO Member'
         REJECTED = 'REJECTED', 'Rejected'
     
     # --- UPDATED FIELD ---
