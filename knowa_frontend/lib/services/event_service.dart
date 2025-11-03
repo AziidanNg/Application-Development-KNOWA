@@ -32,5 +32,21 @@ class EventService {
     }
   }
 
-  // We will add getEventDetails(int id) here later
+  // Fetches the details for a single event
+Future<Event> getEventDetails(int eventId) async {
+  try {
+    final response = await http.get(Uri.parse('$_baseUrl$eventId/'));
+
+    if (response.statusCode == 200) {
+      // Decode the single event object
+      return Event.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+    } else {
+      // Server error
+      throw Exception('Failed to load event details.');
+    }
+  } catch (e) {
+    // Connection error
+    throw Exception('Connection failed: ${e.toString()}');
+  }
+}
 }

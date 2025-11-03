@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/admin_manage_applications_screen.dart';
+import 'package:knowa_frontend/screens/admin_manage_events_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -83,7 +84,13 @@ class AdminDashboardScreen extends StatelessWidget {
             const SizedBox(height: 12),
             _buildActionButton(
               title: 'Create Event',
-              onPressed: () { /* TODO: Navigate to create event */ },
+              onPressed: () { 
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AdminManageEventsScreen(),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 12),
             _buildActionButton(

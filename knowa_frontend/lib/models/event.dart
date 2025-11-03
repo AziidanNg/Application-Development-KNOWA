@@ -7,6 +7,7 @@ class Event {
   final String description;
   final String location;
   final DateTime startTime;
+  final DateTime endTime; // <-- THE MISSING FIELD
   final String imageUrl;
   final String organizerUsername;
 
@@ -16,13 +17,14 @@ class Event {
     required this.description,
     required this.location,
     required this.startTime,
+    required this.endTime, // <-- ADDED TO CONSTRUCTOR
     required this.imageUrl,
     required this.organizerUsername,
   });
 
   // This "factory constructor" builds an Event from the JSON data
   factory Event.fromJson(Map<String, dynamic> json) {
-
+    
     // Helper to build the full image URL
     String getFullImageUrl(String? imageUrl) {
       if (imageUrl == null || imageUrl.isEmpty) {
@@ -41,6 +43,7 @@ class Event {
       description: json['description'],
       location: json['location'],
       startTime: DateTime.parse(json['start_time']),
+      endTime: DateTime.parse(json['end_time']), // <-- ADD THIS LINE
       imageUrl: getFullImageUrl(json['event_image']),
       organizerUsername: json['organizer_username'] ?? 'Unknown',
     );

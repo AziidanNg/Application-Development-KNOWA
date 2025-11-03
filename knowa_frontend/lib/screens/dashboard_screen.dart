@@ -5,6 +5,7 @@ import 'package:knowa_frontend/services/event_service.dart';
 import 'package:intl/intl.dart'; // For formatting dates
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
+import 'package:knowa_frontend/screens/event_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -137,10 +138,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return GestureDetector(
       onTap: () {
-        // TODO: Navigate to EventDetailScreen
-        // Navigator.of(context).push(
-        //   MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)),
-        // );
+         //Navigate to EventDetailScreen
+         Navigator.of(context).push(
+           MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)),
+         );
       },
       child: Container(
         width: 250, // Fixed width for each card

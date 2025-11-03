@@ -1,0 +1,136 @@
+// lib/screens/event_detail_screen.dart
+import 'package:flutter/material.dart';
+import 'package:knowa_frontend/models/event.dart';
+import 'package:intl/intl.dart'; // For formatting dates
+
+class EventDetailScreen extends StatelessWidget {
+  final Event event;
+
+  const EventDetailScreen({super.key, required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    // Format the date (e.g., "Sat, Nov 9, 2025 • 10:00 AM – 12:00 PM")
+    final String formattedDate = DateFormat('E, MMM d, yyyy • h:mm a').format(event.startTime);
+    final String formattedEndTime = DateFormat('h:mm a').format(event.endTime);
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text('Event Details', style: TextStyle(color: Colors.black)),
+      ),
+      backgroundColor: Colors.white,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Event Image
+            Image.network(
+              event.imageUrl,
+              width: double.infinity,
+              height: 250,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 250,
+                  color: Colors.grey[200],
+                  child: Icon(Icons.broken_image, color: Colors.grey, size: 60),
+                );
+              },
+            ),
+
+            // 2. Main Content Area
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    event.title,
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Date and Time
+                  Text(
+                    '$formattedDate – $formattedEndTime',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Location
+                  Text(
+                    event.location,
+                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Spots Filled (Dummy data for now)
+                  Text(
+                    '25 / 50 Spots Filled',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Register Now Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () { /* TODO: Add Register Logic */ },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text(
+                        'Register Now',
+                        style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Share Event Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: () { /* TODO: Add Share Logic */ },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey[800],
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text(
+                        'Share Event',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // About Section
+                  const Text(
+                    'About',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    event.description,
+                    style: TextStyle(fontSize: 16, color: Colors.grey[800], height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
