@@ -36,14 +36,6 @@ class Event {
 
   factory Event.fromJson(Map<String, dynamic> json) {
     
-    String getFullImageUrl(String? imageUrl) {
-      if (imageUrl == null || imageUrl.isEmpty) return '';
-      String baseUrl = defaultTargetPlatform == TargetPlatform.android 
-                       ? 'http://10.0.2.2:8000' 
-                       : 'http://127.0.0.1:8000';
-      return '$baseUrl$imageUrl';
-    }
-
     return Event(
       id: json['id'],
       title: json['title'],
@@ -51,10 +43,11 @@ class Event {
       location: json['location'],
       startTime: DateTime.parse(json['start_time']),
       endTime: DateTime.parse(json['end_time']),
-      imageUrl: getFullImageUrl(json['event_image']),
-      organizerUsername: json['organizer_username'] ?? 'Unknown',
+      
+      // Just use the full URL provided by the server
+      imageUrl: json['event_image_url'] ?? '', 
 
-      // --- ADD JSON PARSING FOR NEW FIELDS ---
+      organizerUsername: json['organizer_username'] ?? 'Unknown',
       status: json['status'] ?? 'DRAFT',
       capacity: json['capacity'] ?? 0,
       calendarLink: json['calendar_link'],

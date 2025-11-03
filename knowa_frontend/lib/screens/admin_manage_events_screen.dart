@@ -20,7 +20,13 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _eventsFuture = _eventService.getEvents(); // Load events
+    _loadEvents(); // Load events
+  }
+
+  void _loadEvents() {
+    setState(() {
+      _eventsFuture = _eventService.getEvents();
+    });
   }
 
   @override
@@ -36,19 +42,22 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
         title: const Text('Events'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add), // Changed to standard "+"
-            onPressed: () {
-              Navigator.of(context).push(
+            icon: const Icon(Icons.add),
+            onPressed: () async { // <-- Make this async
+              // Open the "New Event" form and WAIT for a result
+              final result = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
                   builder: (context) => const AdminCreateEventScreen(),
                   fullscreenDialog: true,
                 ),
-              ).then((_) {
-                // When "Create Event" screen closes, refresh the list
+              );
+
+              // If the page returns 'true', refresh the list
+              if (result == true) {
                 setState(() {
                   _eventsFuture = _eventService.getEvents();
                 });
-              });
+              }
             },
           ),
         ],
@@ -69,9 +78,9 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
         children: [
           // "Upcoming" Tab
           _buildEventList(_eventsFuture, 'PUBLISHED', isUpcoming: true),
-          
+
           // "Past" Tab
-          _buildEventList(_eventsFuture, 'COMPLETED', isUpcoming: false),
+          _buildEventList(_eventsFuture, 'PUBLISHED', isUpcoming: false), // Shows 'PUBLISHED' events from the past
 
           // "Drafts" Tab
           _buildEventList(_eventsFuture, 'DRAFT', isUpcoming: false),
@@ -80,7 +89,6 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
     );
   }
 
-  // This widget builds the list of events for each tab
   Widget _buildEventList(Future<List<Event>> future, String status, {bool isUpcoming = false}) {
     return FutureBuilder<List<Event>>(
       future: future,
@@ -95,19 +103,14 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
           return const Center(child: Text('No events found.'));
         }
 
-        // Filter the events based on the tab's status
         final allEvents = snapshot.data!;
         List<Event> filteredEvents;
-        
+
         if (isUpcoming) {
-          // "Upcoming" = PUBLISHED and in the future
           filteredEvents = allEvents.where((e) => e.status == 'PUBLISHED' && e.startTime.isAfter(DateTime.now())).toList();
-        } else if (status == 'COMPLETED') {
-           // "Past" = PUBLISHED and in the past
+        } else if (status == 'PUBLISHED') { // For the "Past" tab
           filteredEvents = allEvents.where((e) => e.status == 'PUBLISHED' && e.startTime.isBefore(DateTime.now())).toList();
-        }
-        else {
-          // "Drafts" = DRAFT status
+        } else { // For the "Drafts" tab
           filteredEvents = allEvents.where((e) => e.status == 'DRAFT').toList();
         }
 
@@ -125,7 +128,6 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
     );
   }
 
-  // This is the list item from your screenshot
   Widget _buildEventListItem(Event event) {
     final date = DateFormat('MMM d, yyyy').format(event.startTime);
     final time = DateFormat('h:mm a').format(event.startTime);
@@ -133,7 +135,7 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
     final location = event.isOnline ? 'Online' : event.location;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         children: [
           Expanded(
@@ -165,7 +167,7 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
               height: 80,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return Container(width: 100, height: 80, color: Colors.grey[200], child: Icon(Icons.broken_image));
+                return Container(width: 100, height: 80, color: Colors.grey[200], child: const Icon(Icons.broken_image, size: 40));
               },
             ),
           ),

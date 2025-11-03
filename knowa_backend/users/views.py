@@ -10,6 +10,9 @@ from .models import User
 #
 class RegistrationView(APIView):
     # This view will handle POST requests from the Flutter registration screen
+    # This line overrides the site default and allows ANYONE to register
+    permission_classes = [permissions.AllowAny]
+    
     def post(self, request, format=None):
         serializer = UserRegistrationSerializer(data=request.data)
         

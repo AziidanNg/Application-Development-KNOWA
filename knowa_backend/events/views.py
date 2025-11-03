@@ -23,6 +23,10 @@ class EventListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(organizer=self.request.user)
 
+    def get_serializer_context(self):
+        # Pass the request context to the serializer
+        return {'request': self.request}
+
 
 # This view will handle GET, PUT, DELETE for a single event
 class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -37,3 +41,7 @@ class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
 
         # Anyone (even public) can GET (view) the details
         return [permissions.AllowAny()]
+    
+    def get_serializer_context(self):
+        # Pass the request context to the serializer
+        return {'request': self.request}
