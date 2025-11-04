@@ -3,6 +3,9 @@ from rest_framework import serializers
 from .models import User
 # Import the default token serializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.core.exceptions import ValidationError
+import re # For regular expressions
+
 
 # --- SERIALIZER FOR CUSTOM LOGIN ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -37,8 +40,24 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
+        # 1. Check if passwords match
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": "Passwords must match."})
+
+        password = data['password']
+
+        # 2. Check for strong password (1 capital, 1 small, 1 number, 1 symbol)
+        if len(password) < 8:
+            raise serializers.ValidationError({"password": "Password must be at least 8 characters."})
+        if not re.search(r'[A-Z]', password):
+            raise serializers.ValidationError({"password": "Must contain at least one capital letter."})
+        if not re.search(r'[a-z]', password):
+            raise serializers.ValidationError({"password": "Must contain at least one small letter."})
+        if not re.search(r'[0-9]', password):
+            raise serializers.ValidationError({"password": "Must contain at least one number."})
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            raise serializers.ValidationError({"password": "Must contain at least one symbol."})
+
         return data
 
     def create(self, validated_data):

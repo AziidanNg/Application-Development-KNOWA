@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:url_launcher/url_launcher.dart'; // For opening links
+import 'package:intl_phone_field/intl_phone_field.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,8 +18,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // Controllers for text fields
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController(); // We'll add a password field
+  final _phoneController = TextEditingController(); 
+  final _passwordController = TextEditingController();
+
+  // --- NEW: This will store the full phone number (e.g., "+60123456789") ---
+  String _fullPhoneNumber = '';
 
   // State for toggles
   bool _isLoading = false;
@@ -29,8 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   ];
 
   void _handleRegistration() async {
-    // Validate all fields
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return; // Check all validators
 
     if (!_agreeToPDPA) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -44,7 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final result = await _authService.registerUser(
       name: _nameController.text,
       email: _emailController.text,
-      phone: _phoneController.text,
+      phone: _fullPhoneNumber, // <-- Send the full phone number
       password: _passwordController.text,
       interests: _selectedInterests.toList(),
     );
@@ -61,10 +64,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       Navigator.of(context).pop(); // Go back to login
     } else {
+      // ... (error handling code is the same) ...
       String errorMsg = "An unknown error occurred.";
       if (result['error'] is Map) {
          final errorMap = result['error'] as Map;
-         // Use email as username, so check both
          if (errorMap.containsKey('username')) {
             errorMsg = errorMap['username'][0];
          } else if (errorMap.containsKey('email')) {
@@ -85,8 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _launchPDPAUrl() async {
-    // TODO: Replace with your actual PDF URL
-    final Uri url = Uri.parse('https://www.google.com'); 
+    final Uri url = Uri.parse('https://drive.google.com/file/d/15E83ZGclaaJ10JMjefxc_kymfy9L_qAw/view?usp=drive_link'); //PDF
     if (!await launchUrl(url)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not open policy document.')),
@@ -110,18 +112,107 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTextField(label: 'Name', controller: _nameController),
-              _buildTextField(label: 'Email', controller: _emailController, keyboardType: TextInputType.emailAddress),
-              _buildTextField(label: 'Phone', controller: _phoneController, keyboardType: TextInputType.phone),
+              // --- UPDATED "Name" field with validation ---
+              _buildTextField(
+                label: 'Name', 
+                controller: _nameController,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  // NEW: Check for numbers
+                  if (RegExp(r'[0-9]').hasMatch(value)) {
+                    return 'Name cannot contain numbers';
+                  }
+                  return null;
+                }
+              ),
 
-              // Add a password field (not in design, but required)
-              _buildTextField(label: 'Password', controller: _passwordController, isPassword: true),
+              _buildTextField(
+                label: 'Email', 
+                controller: _emailController, 
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                }
+              ),
+
+              // --- NEW: Phone Number Field ---
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Phone', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                    const SizedBox(height: 8),
+                    IntlPhoneField(
+                      controller: _phoneController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your phone',
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      initialCountryCode: 'MY', // Default to Malaysia
+                      onChanged: (phone) {
+                        _fullPhoneNumber = phone.completeNumber; // Stores "+6012345678"
+                      },
+                      // This disables the package's strict (and incorrect) validation
+                      disableLengthCheck: true,
+                      validator: (value) {
+                         if (value == null || value.number.isEmpty) {
+                           return 'Please enter your phone number';
+                         }
+                         return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              // --- UPDATED "Password" field with validation ---
+              _buildTextField(
+                label: 'Password', 
+                controller: _passwordController, 
+                isPassword: true,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a password';
+                  }
+                  // NEW: Strong password checks
+                  if (value.length < 8) {
+                    return 'Password must be at least 8 characters';
+                  }
+                  if (!value.contains(RegExp(r'[A-Z]'))) {
+                    return 'Must contain at least one capital letter';
+                  }
+                  if (!value.contains(RegExp(r'[a-z]'))) {
+                    return 'Must contain at least one small letter';
+                  }
+                  if (!value.contains(RegExp(r'[0-9]'))) {
+                    return 'Must contain at least one number';
+  }
+  if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                    return 'Must contain at least one symbol';
+                  }
+                  return null;
+                }
+              ),
 
               const SizedBox(height: 24),
               const Text('Interests', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
               const SizedBox(height: 8),
 
-              // Interest Chips
+              // ... (Interest Chips code is the same) ...
               Wrap(
                 spacing: 8.0,
                 children: _interestOptions.map((interest) {
@@ -149,7 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 24),
 
-              // PDPA Checkbox
+              // ... (PDPA Checkbox code is the same) ...
               Row(
                 children: [
                   Checkbox(
@@ -162,7 +253,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   Expanded(
                     child: InkWell(
-                      onTap: _launchPDPAUrl, // This will open the link
+                      onTap: _launchPDPAUrl,
                       child: const Text(
                         'I agree to the Personal Data Protection...',
                         style: TextStyle(
@@ -176,7 +267,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Register Button
+              // ... (Register Button code is the same) ...
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -198,12 +289,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Helper widget for TextFields
+  // --- UPDATED Helper widget to accept a validator ---
   Widget _buildTextField({
     required String label,
     required TextEditingController controller,
     TextInputType keyboardType = TextInputType.text,
     bool isPassword = false,
+    String? Function(String?)? validator, // <-- NEW
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -225,12 +317,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 borderSide: BorderSide.none,
               ),
             ),
-            validator: (value) {
+            validator: validator ?? (value) { // <-- USE THE VALIDATOR
               if (value == null || value.isEmpty) {
                 return 'Please enter your $label';
-              }
-              if (label == 'Email' && !value.contains('@')) {
-                return 'Please enter a valid email';
               }
               return null;
             },
