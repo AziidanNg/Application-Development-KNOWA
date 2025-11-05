@@ -1,0 +1,29 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+
+# Local database config
+knowa_backend/my.cnf
+*.cnf
+
+# SQLite DB (if used locally)
+*.sqlite3
+
+# Django static + media (if generated)
+staticfiles/
+media/
+
+# Flutter build output
+knowa_frontend/build/
+.knowa_frontend/.dart_tool/
+.knowa_frontend/.packages
+.knowa_frontend/.flutter-plugins
+.knowa_frontend/.flutter-plugins-dependencies
+
+# Android / iOS build junk (if exists later)
+**/build/
+**/Pods/
