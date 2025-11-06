@@ -72,7 +72,8 @@ Future<Map<String, dynamic>> createEvent({
   required String location,
   required String startTime,
   required String endTime,
-  required int capacity,
+  required int capacityParticipants,
+  required int capacityCrew,         
   required String status,
   required bool isOnline,
   String? calendarLink,
@@ -91,14 +92,15 @@ Future<Map<String, dynamic>> createEvent({
     request.fields['location'] = isOnline ? 'Online' : location;
     request.fields['start_time'] = startTime;
     request.fields['end_time'] = endTime;
-    request.fields['capacity'] = capacity.toString();
+    request.fields['capacity_participants'] = capacityParticipants.toString(); 
+    request.fields['capacity_crew'] = capacityCrew.toString();
     request.fields['status'] = status;
     request.fields['is_online'] = isOnline.toString();
     if (calendarLink != null && calendarLink.isNotEmpty) {
       request.fields['calendar_link'] = calendarLink;
     }
 
-    // --- NEW: ADD THE IMAGE FILE ---
+    // --- ADD THE IMAGE FILE ---
     if (imageFile != null) {
       request.files.add(
         await http.MultipartFile.fromPath(
@@ -134,7 +136,8 @@ Future<Map<String, dynamic>> updateEvent(
   required String location,
   required String startTime,
   required String endTime,
-  required int capacity,
+  required int capacityParticipants, // Renamed
+  required int capacityCrew,         // Added
   required String status,
   required bool isOnline,
   String? calendarLink,
@@ -154,7 +157,8 @@ Future<Map<String, dynamic>> updateEvent(
     request.fields['location'] = isOnline ? 'Online' : location;
     request.fields['start_time'] = startTime;
     request.fields['end_time'] = endTime;
-    request.fields['capacity'] = capacity.toString();
+    request.fields['capacity_participants'] = capacityParticipants.toString(); 
+    request.fields['capacity_crew'] = capacityCrew.toString();
     request.fields['status'] = status;
     request.fields['is_online'] = isOnline.toString();
     if (calendarLink != null && calendarLink.isNotEmpty) {

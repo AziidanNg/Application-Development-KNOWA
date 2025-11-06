@@ -11,10 +11,11 @@ class EventSerializer(serializers.ModelSerializer):
         default=serializers.CurrentUserDefault()
     )
 
-    # --- NEW: A field that builds the full URL ---
+    # --- A field that builds the full URL ---
     event_image_url = serializers.SerializerMethodField()
 
     participants_count = serializers.SerializerMethodField()
+    crew_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -30,18 +31,24 @@ class EventSerializer(serializers.ModelSerializer):
 
             'organizer',
             'organizer_username',
-            'participants',
-            'participants_count',
             'status',
-            'capacity',
+            'capacity_participants',
+            'capacity_crew',
+            'participants_count',
+            'crew_count',
             'calendar_link',
             'is_online',
         ]
         # We don't need to send the whole 'participants' list for this view
-        read_only_fields = ['organizer_username', 'event_image_url', 'participants_count']
+        read_only_fields = [
+            'organizer_username', 
+            'event_image_url', 
+            'participants_count', 
+            'crew_count'
+        ]
         extra_kwargs = {'event_image': {'write_only': True}}
 
-    # --- NEW: The function that builds the full URL ---
+    # --- The function that builds the full URL ---
     def get_event_image_url(self, obj):
         # Get the 'request' object from the context
         request = self.context.get('request')
@@ -50,7 +57,12 @@ class EventSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.event_image.url)
         return None # Return null if no image
     
-    # --- NEW: The function that counts participants ---
+    # --- The function that counts participants ---
     def get_participants_count(self, obj):
         # This counts how many users are in the 'participants' list
         return obj.participants.count()
+    
+    # --- The function that counts crew ---
+    def get_crew_count(self, obj):
+        # This counts how many users are in the 'crew' list
+        return obj.crew.count()

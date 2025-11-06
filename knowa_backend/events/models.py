@@ -29,13 +29,23 @@ class Event(models.Model):
         blank=True
     )
 
+    # This is for "Members" (Crew)
+    crew = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="joined_events_as_crew",
+        blank=True
+    )
+
     # --- NEW FIELDS FROM YOUR DESIGN ---
     status = models.CharField(
         max_length=10,
         choices=EventStatus.choices,
         default=EventStatus.DRAFT
     )
-    capacity = models.PositiveIntegerField(default=50) # e.g., "50 Spots"
+
+    capacity_participants = models.PositiveIntegerField(default=50)
+    capacity_crew = models.PositiveIntegerField(default=10)
+
     calendar_link = models.URLField(max_length=500, blank=True, null=True) # For "Calendar Link"
     is_online = models.BooleanField(default=False) # For "Online" / "Offline"
 

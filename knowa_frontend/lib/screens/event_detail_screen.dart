@@ -77,13 +77,27 @@ class EventDetailScreen extends StatelessWidget {
                   const SizedBox(height: 8),
 
                   // Spots Filled (Dummy data for now)
-                  Text(
-                        '${event.participantsCount} / ${event.capacity} Spots Filled',
-                        style: TextStyle(
-                          fontSize: 16, 
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.bold
-                        ),
+                  Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${event.participantCount} / ${event.capacityParticipants} Participant Spots Filled',
+                            style: TextStyle(
+                              fontSize: 16, 
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.bold
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${event.crewCount} / ${event.capacityCrew} Crew Spots Filled',
+                            style: TextStyle(
+                              fontSize: 16, 
+                              color: Colors.blue[700], // Make crew spots stand out
+                              fontWeight: FontWeight.bold
+                            ),
+                          ),
+                        ],
                       ),
                   const SizedBox(height: 24),
 

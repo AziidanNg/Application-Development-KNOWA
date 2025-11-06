@@ -26,6 +26,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
   final _capacityController = TextEditingController();
   final _calendarLinkController = TextEditingController();
   final _locationController = TextEditingController();
+  final _crewCapacityController = TextEditingController();
 
   // State
   DateTime? _selectedDate;
@@ -51,7 +52,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
       final event = widget.eventToEdit!;
       _titleController.text = event.title;
       _descriptionController.text = event.description;
-      _capacityController.text = event.capacity.toString();
+      _capacityController.text = event.capacityParticipants.toString();
+      _crewCapacityController.text = event.capacityCrew.toString(); 
       _calendarLinkController.text = event.calendarLink ?? '';
       _locationController.text = event.location;
       _selectedDate = event.startTime;
@@ -102,7 +104,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
         location: eventData['location'] as String,
         startTime: eventData['startTime'] as String,
         endTime: eventData['endTime'] as String,
-        capacity: eventData['capacity'] as int,
+        capacityParticipants: int.tryParse(_capacityController.text) ?? 50,
+        capacityCrew: int.tryParse(_crewCapacityController.text) ?? 10,  
         status: eventData['status'] as String,
         isOnline: eventData['isOnline'] as bool,
         calendarLink: eventData['calendarLink'] as String?,
@@ -116,7 +119,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
         location: eventData['location'] as String,
         startTime: eventData['startTime'] as String,
         endTime: eventData['endTime'] as String,
-        capacity: eventData['capacity'] as int,
+        capacityParticipants: int.tryParse(_capacityController.text) ?? 50, 
+        capacityCrew: int.tryParse(_crewCapacityController.text) ?? 10, 
         status: eventData['status'] as String,
         isOnline: eventData['isOnline'] as bool,
         calendarLink: eventData['calendarLink'] as String?,
@@ -262,12 +266,21 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Capacity
+              // --- UPDATE THE "Capacity" FIELD ---
               TextFormField(
                 controller: _capacityController,
-                decoration: _buildInputDecoration(hint: 'Capacity'),
+                decoration: _buildInputDecoration(hint: 'Participant Capacity'), // Renamed hint
                 keyboardType: TextInputType.number,
-                validator: (value) => value!.isEmpty ? 'Please enter a capacity' : null,
+                validator: (value) => value!.isEmpty ? 'Please enter participant capacity' : null,
+              ),
+              const SizedBox(height: 16),
+              
+              // --- "Crew Capacity" FIELD ---
+              TextFormField(
+                controller: _crewCapacityController,
+                decoration: _buildInputDecoration(hint: 'Crew Capacity'),
+                keyboardType: TextInputType.number,
+                validator: (value) => value!.isEmpty ? 'Please enter crew capacity' : null,
               ),
               const SizedBox(height: 16),
 
