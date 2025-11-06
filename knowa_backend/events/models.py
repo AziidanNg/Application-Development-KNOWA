@@ -1,4 +1,5 @@
 # events/models.py
+# defines the Event model, tells Django what an event is and what information it has
 from django.db import models
 from django.conf import settings 
 
