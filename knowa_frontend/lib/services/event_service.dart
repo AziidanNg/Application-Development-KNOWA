@@ -212,4 +212,36 @@ Future<bool> deleteEvent(int eventId) async {
     return false;
   }
 }
+
+// --- ADD THIS NEW FUNCTION TO JOIN AN EVENT ---
+Future<Map<String, dynamic>> joinEvent(int eventId, {required bool asCrew}) async {
+  final _storage = const FlutterSecureStorage();
+  final token = await _storage.read(key: 'access_token');
+
+  // Determine which API endpoint to call
+  final String endpoint = asCrew 
+      ? '$_baseUrl$eventId/join-crew/' 
+      : '$_baseUrl$eventId/join-participant/';
+
+  try {
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+
+    if (response.statusCode == 200) { // 200 OK for success
+      return {'success': true, 'data': responseBody};
+    } else {
+      // Send back the error message from the server (e.g., "Capacity is full")
+      return {'success': false, 'error': responseBody['error'] ?? 'An error occurred'};
+    }
+  } catch (e) {
+    return {'success': false, 'error': 'Connection failed: ${e.toString()}'};
+  }
+}
 }

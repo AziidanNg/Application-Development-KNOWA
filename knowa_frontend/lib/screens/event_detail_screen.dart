@@ -1,24 +1,91 @@
 // lib/screens/event_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/models/event.dart';
-import 'package:intl/intl.dart'; // For formatting dates
+import 'package:knowa_frontend/services/event_service.dart'; // Import the service
+import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class EventDetailScreen extends StatelessWidget {
+// --- 1. CONVERT TO STATEFULWIDGET ---
+class EventDetailScreen extends StatefulWidget {
   final Event event;
-  final Map<String, dynamic> userData;
+  final Map<String, dynamic> userData; 
 
   const EventDetailScreen({super.key, required this.event, required this.userData});
 
   @override
-  Widget build(BuildContext context) {
-    // Format the date (e.g., "Sat, Nov 9, 2025 • 10:00 AM – 12:00 PM")
-    final String formattedDate = DateFormat('E, MMM d, yyyy • h:mm a').format(event.startTime);
-    final String formattedEndTime = DateFormat('h:mm a').format(event.endTime);
+  State<EventDetailScreen> createState() => _EventDetailScreenState();
+}
 
-    // --- 2. CHECK THE USER'S ROLE ---
-    final bool isMember = userData['member_status'] == 'MEMBER' || userData['is_staff'] == true;
-    final String buttonText = isMember ? 'Join as Crew' : 'Register Now';
+class _EventDetailScreenState extends State<EventDetailScreen> {
+  // --- 2. ADD STATE VARIABLES ---
+  final EventService _eventService = EventService();
+  bool _isLoading = false;
+
+  // This is a local, changeable copy of the event
+  late Event _currentEvent;
+  late bool _isMember;
+  late String _buttonText;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize our local state with the data passed to the screen
+    _currentEvent = widget.event;
+    _isMember = widget.userData['member_status'] == 'MEMBER' || widget.userData['is_staff'] == true;
+    _buttonText = _isMember ? 'Join as Crew' : 'Register Now';
+  }
+
+  // --- 3. THIS IS THE COMPLETE BUTTON LOGIC ---
+  void _handleRegisterOrJoin() async {
+    setState(() { _isLoading = true; });
+    
+    // Call the API
+    final result = await _eventService.joinEvent(_currentEvent.id, asCrew: _isMember);
+
+    if (!mounted) return; // Check if the widget is still in the tree
+    
+    if (result['success']) {
+      // --- IT WORKED! NOW RE-FETCH THE EVENT DATA ---
+      try {
+        final updatedEvent = await _eventService.getEventDetails(_currentEvent.id);
+        setState(() {
+          _currentEvent = updatedEvent; // Update the UI with new counts
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['data']['status'] ?? 'Successfully registered!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        // Failed to re-fetch, but still show success
+        setState(() { _isLoading = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully registered! (Could not refresh counts)'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } else {
+      // It failed (e.g., "Capacity full")
+      setState(() { _isLoading = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed: ${result['error']}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // --- 4. READ FROM THE LOCAL _currentEvent, NOT widget.event ---
+    final String formattedDate = DateFormat('E, MMM d, yyyy • h:mm a').format(_currentEvent.startTime);
+    final String formattedEndTime = DateFormat('h:mm a').format(_currentEvent.endTime);
 
     return Scaffold(
       appBar: AppBar(
@@ -26,7 +93,8 @@ class EventDetailScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
+          // --- 5. FIX NAVIGATOR.POP TO PASS BACK 'TRUE' ---
+          onPressed: () => Navigator.of(context).pop(true), // Send 'true' to refresh dashboard
         ),
         title: const Text('Event Details', style: TextStyle(color: Colors.black)),
       ),
@@ -35,9 +103,8 @@ class EventDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Event Image
             Image.network(
-              event.imageUrl,
+              _currentEvent.imageUrl,
               width: double.infinity,
               height: 250,
               fit: BoxFit.cover,
@@ -49,43 +116,22 @@ class EventDetailScreen extends StatelessWidget {
                 );
               },
             ),
-
-            // 2. Main Content Area
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
-                  Text(
-                    event.title,
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                  ),
+                  Text(_currentEvent.title, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
-
-                  // Date and Time
-                  Text(
-                    '$formattedDate – $formattedEndTime',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
+                  Text('$formattedDate – $formattedEndTime', style: TextStyle(fontSize: 16, color: Colors.grey[700])),
                   const SizedBox(height: 8),
-
-                  // Location
-                  // --- NEW: Clickable Location Link ---
+                  
                   InkWell(
                     onTap: () async {
-                      // This formats the location for a Google Maps URL
-                      final query = Uri.encodeComponent(event.location);
-                      final url = Uri.parse('http://maps.google.com/?q=$query');
-
+                      final query = Uri.encodeComponent(_currentEvent.location);
+                      final url = Uri.parse('http://googleusercontent.com/maps.google.com/search/?api=1&query=$query');
                       if (await canLaunchUrl(url)) {
                         await launchUrl(url);
-                      } else {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Could not open map.')),
-                          );
-                        }
                       }
                     },
                     child: Padding(
@@ -96,7 +142,7 @@ class EventDetailScreen extends StatelessWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              event.location,
+                              _currentEvent.location,
                               style: TextStyle(
                                 fontSize: 16, 
                                 color: Colors.blue.shade700, 
@@ -108,57 +154,56 @@ class EventDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // --- END OF
-
-                  // Spots Filled (Dummy data for now)
+                  const SizedBox(height: 8),
+                  
+                  // These numbers will now update instantly
                   Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${event.participantCount} / ${event.capacityParticipants} Participant Spots Filled',
-                            style: TextStyle(
-                              fontSize: 16, 
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.bold
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${event.crewCount} / ${event.capacityCrew} Crew Spots Filled',
-                            style: TextStyle(
-                              fontSize: 16, 
-                              color: Colors.blue[700], // Make crew spots stand out
-                              fontWeight: FontWeight.bold
-                            ),
-                          ),
-                        ],
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${_currentEvent.participantCount} / ${_currentEvent.capacityParticipants} Participant Spots Filled',
+                        style: TextStyle(fontSize: 16, color: Colors.grey[700], fontWeight: FontWeight.bold),
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_currentEvent.crewCount} / ${_currentEvent.capacityCrew} Crew Spots Filled',
+                        style: TextStyle(fontSize: 16, color: Colors.blue[700], fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
-
-                  // Register Now Button
+                  
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () { /* TODO: Add Register/Join Crew Logic */ },
+                      onPressed: _isLoading ? null : _handleRegisterOrJoin, // Wired up
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: Text(
-                        buttonText, // <-- IT'S DYNAMIC NOW
-                        style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
+                      child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            _buttonText, // Use the state variable
+                            style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // Share Event Button
+                  
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: OutlinedButton(
-                      onPressed: () { /* TODO: Add Share Logic */ },
+                      onPressed: () {
+                        final String shareText = 
+                          "Join me at this event!\n\n"
+                          "${_currentEvent.title}\n"
+                          "When: $formattedDate\n"
+                          "Where: ${_currentEvent.location}";
+                        Share.share(shareText);
+                      },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.grey[800],
                         side: BorderSide(color: Colors.grey.shade300),
@@ -171,15 +216,11 @@ class EventDetailScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 32),
-
-                  // About Section
-                  const Text(
-                    'About',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
+                  
+                  const Text('About', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   Text(
-                    event.description,
+                    _currentEvent.description,
                     style: TextStyle(fontSize: 16, color: Colors.grey[800], height: 1.5),
                   ),
                 ],

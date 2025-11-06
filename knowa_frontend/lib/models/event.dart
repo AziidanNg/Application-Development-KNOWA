@@ -50,7 +50,7 @@ class Event {
       imageUrl: json['event_image_url'] ?? '', 
       capacityParticipants: json['capacity_participants'] ?? 0,
       capacityCrew: json['capacity_crew'] ?? 0,
-      participantCount: json['participant_count'] ?? 0,
+      participantCount: json['participants_count'] ?? 0,
       crewCount: json['crew_count'] ?? 0,
       organizerUsername: json['organizer_username'] ?? 'Unknown',
       status: json['status'] ?? 'DRAFT',
