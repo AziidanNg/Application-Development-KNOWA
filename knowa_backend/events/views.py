@@ -1,4 +1,5 @@
 # events/views.py
+# This file controls who can see, create, update, or delete events in the app
 from rest_framework import generics, permissions
 from .models import Event
 from .serializers import EventSerializer
