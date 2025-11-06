@@ -3,9 +3,8 @@ from rest_framework import serializers
 from .models import User
 # Import the default token serializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.core.exceptions import ValidationError
-import re # For regular expressions
-
+from django.core.exceptions import ValidationError # For password validation
+import re # For password validation
 
 # --- SERIALIZER FOR CUSTOM LOGIN ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -23,13 +22,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 # --- SERIALIZER FOR REGISTRATION ---
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    first_name = serializers.CharField(required=True) 
 
     class Meta:
         model = User
         fields = [
             'username', 
             'email', 
-            'first_name', # This is for "Name"
+            'first_name',
             'phone', 
             'interests',
             'password', 
@@ -46,7 +46,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         password = data['password']
 
-        # 2. Check for strong password (1 capital, 1 small, 1 number, 1 symbol)
+        # 2. Check for strong password
         if len(password) < 8:
             raise serializers.ValidationError({"password": "Password must be at least 8 characters."})
         if not re.search(r'[A-Z]', password):
@@ -57,7 +57,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"password": "Must contain at least one number."})
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
             raise serializers.ValidationError({"password": "Must contain at least one symbol."})
-
+        
         return data
 
     def create(self, validated_data):
@@ -65,11 +65,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
-            # --- ADD THE NEW FIELDS HERE ---
             first_name=validated_data.get('first_name', ''),
             phone=validated_data.get('phone', ''),
             interests=validated_data.get('interests', '')
-            # The model default is 'PUBLIC'
         )
         return user
 
