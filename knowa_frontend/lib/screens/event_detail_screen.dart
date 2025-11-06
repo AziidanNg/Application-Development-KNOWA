@@ -73,9 +73,13 @@ class EventDetailScreen extends StatelessWidget {
 
                   // Spots Filled (Dummy data for now)
                   Text(
-                    '25 / 50 Spots Filled',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
+                        '${event.participantsCount} / ${event.capacity} Spots Filled',
+                        style: TextStyle(
+                          fontSize: 16, 
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.bold
+                        ),
+                      ),
                   const SizedBox(height: 24),
 
                   // Register Now Button

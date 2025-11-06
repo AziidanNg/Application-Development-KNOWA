@@ -14,6 +14,7 @@ class Event {
   // --- THE FIX: ADDING NEW FIELDS ---
   final String status;   // For "DRAFT", "PUBLISHED"
   final int capacity;
+  final int participantsCount;
   final String? calendarLink; // Make it nullable
   final bool isOnline;
 
@@ -26,6 +27,7 @@ class Event {
     required this.endTime,
     required this.imageUrl,
     required this.organizerUsername,
+    required this.participantsCount,
     
     // --- ADD TO CONSTRUCTOR ---
     required this.status,
@@ -47,6 +49,7 @@ class Event {
       // Just use the full URL provided by the server
       imageUrl: json['event_image_url'] ?? '', 
 
+      participantsCount: json['participants_count'] ?? 0,
       organizerUsername: json['organizer_username'] ?? 'Unknown',
       status: json['status'] ?? 'DRAFT',
       capacity: json['capacity'] ?? 0,

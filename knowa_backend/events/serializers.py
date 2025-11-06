@@ -12,6 +12,8 @@ class EventSerializer(serializers.ModelSerializer):
     # --- NEW: A field that builds the full URL ---
     event_image_url = serializers.SerializerMethodField()
 
+    participants_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Event
         fields = [
@@ -27,16 +29,15 @@ class EventSerializer(serializers.ModelSerializer):
             'organizer',
             'organizer_username',
             'participants',
+            'participants_count',
             'status',
             'capacity',
             'calendar_link',
             'is_online',
         ]
-        read_only_fields = ['participants']
-        # We add this to hide the old 'event_image' path from the API
-        extra_kwargs = {
-            'event_image': {'write_only': True, 'required': False}
-        }
+        # We don't need to send the whole 'participants' list for this view
+        read_only_fields = ['organizer_username', 'event_image_url', 'participants_count']
+        extra_kwargs = {'event_image': {'write_only': True}}
 
     # --- NEW: The function that builds the full URL ---
     def get_event_image_url(self, obj):
@@ -46,3 +47,8 @@ class EventSerializer(serializers.ModelSerializer):
             # Build the full, absolute URL (e.g., http://.../media/...)
             return request.build_absolute_uri(obj.event_image.url)
         return None # Return null if no image
+    
+    # --- NEW: The function that counts participants ---
+    def get_participants_count(self, obj):
+        # This counts how many users are in the 'participants' list
+        return obj.participants.count()
