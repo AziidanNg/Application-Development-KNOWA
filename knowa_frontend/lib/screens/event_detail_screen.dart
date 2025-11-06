@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/models/event.dart';
 import 'package:intl/intl.dart'; // For formatting dates
+import 'package:url_launcher/url_launcher.dart';
 
 class EventDetailScreen extends StatelessWidget {
   final Event event;
@@ -70,11 +71,44 @@ class EventDetailScreen extends StatelessWidget {
                   const SizedBox(height: 8),
 
                   // Location
-                  Text(
-                    event.location,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                  // --- NEW: Clickable Location Link ---
+                  InkWell(
+                    onTap: () async {
+                      // This formats the location for a Google Maps URL
+                      final query = Uri.encodeComponent(event.location);
+                      final url = Uri.parse('http://maps.google.com/?q=$query');
+
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Could not open map.')),
+                          );
+                        }
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, color: Colors.blue.shade700, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              event.location,
+                              style: TextStyle(
+                                fontSize: 16, 
+                                color: Colors.blue.shade700, 
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  // --- END OF
 
                   // Spots Filled (Dummy data for now)
                   Column(
