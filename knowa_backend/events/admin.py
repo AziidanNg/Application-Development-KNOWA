@@ -1,4 +1,5 @@
 # events/admin.py
+# This file customizes how events appear in the Django admin panel
 from django.contrib import admin
 from .models import Event
 
