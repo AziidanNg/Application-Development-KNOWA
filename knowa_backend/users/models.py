@@ -1,4 +1,5 @@
 # users/models.py
+# define what user is, what info they have and what they can do
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.utils.translation import gettext_lazy as _
