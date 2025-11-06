@@ -73,26 +73,27 @@ Future<Map<String, dynamic>> createEvent({
   required String startTime,
   required String endTime,
   required int capacityParticipants,
-  required int capacityCrew,         
+  required int capacityCrew,
   required String status,
   required bool isOnline,
   String? calendarLink,
-  XFile? imageFile, // <-- ADD THIS PARAMETER
+  XFile? imageFile,
 }) async {
 
+  // --- THIS IS THE FIX ---
   final _storage = const FlutterSecureStorage();
   final token = await _storage.read(key: 'access_token');
+  // ---------------------
 
   try {
     var request = http.MultipartRequest('POST', Uri.parse(_baseUrl));
 
-    // Add all the text fields
     request.fields['title'] = title;
     request.fields['description'] = description;
     request.fields['location'] = isOnline ? 'Online' : location;
     request.fields['start_time'] = startTime;
     request.fields['end_time'] = endTime;
-    request.fields['capacity_participants'] = capacityParticipants.toString(); 
+    request.fields['capacity_participants'] = capacityParticipants.toString();
     request.fields['capacity_crew'] = capacityCrew.toString();
     request.fields['status'] = status;
     request.fields['is_online'] = isOnline.toString();
@@ -100,19 +101,20 @@ Future<Map<String, dynamic>> createEvent({
       request.fields['calendar_link'] = calendarLink;
     }
 
-    // --- ADD THE IMAGE FILE ---
+    // --- THIS IS THE FIX ---
+    // Add the authorization token to the request header
+    request.headers['Authorization'] = 'Bearer $token';
+    // ---------------------
+
     if (imageFile != null) {
       request.files.add(
         await http.MultipartFile.fromPath(
-          'event_image', // This MUST match your Django model field name
+          'event_image',
           imageFile.path,
-          contentType: MediaType('image', 'jpeg'), // Or 'png'
+          contentType: MediaType('image', 'jpeg'),
         ),
       );
     }
-    // ----------------------------
-
-    request.headers['Authorization'] = 'Bearer $token';
 
     var streamedResponse = await request.send();
     var response = await http.Response.fromStream(streamedResponse);
@@ -129,35 +131,36 @@ Future<Map<String, dynamic>> createEvent({
 
   // ---NEW FUNCTION TO UPDATE AN EVENT ---
 Future<Map<String, dynamic>> updateEvent(
-  int eventId, // <-- The ID of the event to update
+  int eventId,
   {
   required String title,
   required String description,
   required String location,
   required String startTime,
   required String endTime,
-  required int capacityParticipants, // Renamed
-  required int capacityCrew,         // Added
+  required int capacityParticipants,
+  required int capacityCrew,
   required String status,
   required bool isOnline,
   String? calendarLink,
   XFile? imageFile,
 }) async {
 
+  // --- THIS IS THE FIX ---
   final _storage = const FlutterSecureStorage();
   final token = await _storage.read(key: 'access_token');
+  // ---------------------
 
   try {
-    // We use PATCH for partial updates
     var request = http.MultipartRequest('PATCH', Uri.parse('$_baseUrl$eventId/'));
 
-    // Add all the text fields
+    // ... (all your request.fields are here) ...
     request.fields['title'] = title;
     request.fields['description'] = description;
     request.fields['location'] = isOnline ? 'Online' : location;
     request.fields['start_time'] = startTime;
     request.fields['end_time'] = endTime;
-    request.fields['capacity_participants'] = capacityParticipants.toString(); 
+    request.fields['capacity_participants'] = capacityParticipants.toString();
     request.fields['capacity_crew'] = capacityCrew.toString();
     request.fields['status'] = status;
     request.fields['is_online'] = isOnline.toString();
@@ -165,10 +168,10 @@ Future<Map<String, dynamic>> updateEvent(
       request.fields['calendar_link'] = calendarLink;
     }
 
-    // Add the authorization token
+    // --- THIS IS THE FIX ---
     request.headers['Authorization'] = 'Bearer $token';
+    // ---------------------
 
-    // Add the image file *only if* the user picked a new one
     if (imageFile != null) {
       request.files.add(
         await http.MultipartFile.fromPath(
@@ -182,12 +185,11 @@ Future<Map<String, dynamic>> updateEvent(
     var streamedResponse = await request.send();
     var response = await http.Response.fromStream(streamedResponse);
 
-    if (response.statusCode == 200) { // 200 means "OK"
+    if (response.statusCode == 200) {
       return {'success': true, 'data': jsonDecode(utf8.decode(response.bodyBytes))};
     } else {
       return {'success': false, 'error': jsonDecode(utf8.decode(response.bodyBytes))};
     }
-
   } catch (e) {
     return {'success': false, 'error': 'Connection failed: ${e.toString()}'};
   }
