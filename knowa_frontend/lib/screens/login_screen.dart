@@ -5,6 +5,7 @@ import 'package:knowa_frontend/screens/register_screen.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Make sure this is imported
 import 'package:knowa_frontend/screens/verify_2fa_screen.dart';
+import 'package:knowa_frontend/screens/forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -164,11 +165,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
                 TextButton(
-                  onPressed: () {
-                    // TODO: Navigate to Forgot Password screen
-                  },
-                  child: Text("Forgot Password?", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
-                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                  );
+              },
+              child: Text("Forgot Password?", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+            ),
               ],
             ),
             const SizedBox(height: 16),

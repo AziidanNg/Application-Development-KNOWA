@@ -184,4 +184,42 @@ Future<bool> updateUserStatus(int userId, String action) async {
     return false;
   }
 }
+
+// REQUESTING a password reset
+Future<Map<String, dynamic>> requestPasswordReset(String email) async {
+  try {
+    final response = await http.post(
+      Uri.parse('${_baseUrl}password-reset/'),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode(<String, String>{
+        'email': email,
+      }),
+    );
+    return {'success': response.statusCode == 200, 'data': jsonDecode(response.body)};
+  } catch (e) {
+    return {'success': false, 'error': 'Connection failed.'};
+  }
+}
+
+// For CONFIRMING the new password
+Future<Map<String, dynamic>> confirmPasswordReset({
+  required String email,
+  required String tacCode,
+  required String password,
+}) async {
+  try {
+    final response = await http.post(
+      Uri.parse('${_baseUrl}password-reset/confirm/'),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode(<String, String>{
+        'email': email,
+        'tac_code': tacCode,
+        'password': password,
+      }),
+    );
+    return {'success': response.statusCode == 200, 'data': jsonDecode(response.body)};
+  } catch (e) {
+    return {'success': false, 'error': 'Connection failed.'};
+  }
+}
 }

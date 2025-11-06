@@ -153,3 +153,55 @@ class LoginVerifyTACView(APIView):
 
         # TAC was wrong or expired
         return Response({'error': 'Invalid or expired TAC code.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+# --- NEW PASSWORD RESET VIEWS ---
+
+# 1. View for REQUESTING a password reset
+# This will find the user by email and send them a TAC code
+class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny] # Anyone can request a reset
+
+    def post(self, request):
+        email = request.data.get('email')
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Don't tell the user the email failed, just say OK
+            return Response({'status': 'Password reset email sent (if user exists).'}, status=status.HTTP_200_OK)
+
+        # Generate a 6-digit TAC
+        tac = user.generate_tac()
+
+        # --- THIS IS THE EMAIL ---
+        # It will print to your Django terminal
+        subject = 'Reset Your KNOWA Password'
+        message = f'Your temporary access code (TAC) for password reset is: {tac}\n\nThis code will expire in 5 minutes.'
+
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+
+        return Response({'status': 'Password reset email sent.'}, status=status.HTTP_200_OK)
+
+
+# 2. View for CONFIRMING the new password
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        tac_code = request.data.get('tac_code')
+        password = request.data.get('password')
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid user or TAC code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the TAC is valid (this also clears it)
+        if user.is_tac_valid(tac_code):
+            # TAC is correct, set the new password
+            user.set_password(password)
+            user.save()
+            return Response({'status': 'Password reset successful.'}, status=status.HTTP_200_OK)
+        else:
+            # Token is invalid or expired
+            return Response({'error': 'Invalid or expired TAC code.'}, status=status.HTTP_400_BAD_REQUEST)

@@ -6,8 +6,8 @@ from .views import (
     ApproveUserView,
     RejectUserView,
     InterviewUserView,
-    #PasswordResetRequestView,
-    #PasswordResetConfirmView,
+    PasswordResetRequestView,
+    PasswordResetConfirmView,
 
     # --- IMPORT THE NEW 2FA VIEWS ---
     LoginRequestTACView,
@@ -26,8 +26,8 @@ urlpatterns = [
     path('verify-2fa/', LoginVerifyTACView.as_view(), name='2fa-verify-tac'),
 
     # --- Password Reset URLs ---
-    #path('password-reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
-    #path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('password-reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
 
     # --- ADMIN URLs ---
     path('admin/pending/', PendingUserListView.as_view(), name='pending-users'),
