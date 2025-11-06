@@ -1,4 +1,6 @@
 # events/serializers.py
+# This file defines how event data is converted to and from JSON
+# This file controls what event info is sent to users and how new events are created
 from rest_framework import serializers
 from .models import Event
 from users.models import User
