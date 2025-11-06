@@ -1,4 +1,5 @@
 # events/urls.py
+# maps URLs to the appropriate event class in events/views.py
 from django.urls import path
 from .views import EventListCreateView, EventDetailView
 
