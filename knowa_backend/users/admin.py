@@ -1,4 +1,5 @@
 # users/admin.py
+# admins to view, filter and edit users in the admin panel
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
