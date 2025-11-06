@@ -1,4 +1,5 @@
 # users/urls.py
+# connect each url to correct action
 from django.urls import path
 from .views import (
     RegistrationView, 
