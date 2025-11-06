@@ -9,11 +9,18 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
+import configparser
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+config = configparser.ConfigParser()
+config.read(os.path.join(BASE_DIR, 'my.cnf'))
+
+EMAIL_HOST_USER = config.get('email', 'EMAIL_USER', fallback=None)
+EMAIL_HOST_PASSWORD = config.get('email', 'EMAIL_PASS', fallback=None)
 
 
 # Quick-start development settings - unsuitable for production
@@ -157,3 +164,14 @@ REST_FRAMEWORK = {
 # Settings for user-uploaded files (like profile pics or event photos)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# --- EMAIL CONFIGURATION FOR 2FA & PASSWORD RESET ---
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+# These two lines use the secrets from your my.cnf file
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_HOST_USER = EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = EMAIL_HOST_PASSWORD

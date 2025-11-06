@@ -4,6 +4,10 @@ from rest_framework.response import Response
 from rest_framework import status, generics, permissions
 from .serializers import UserRegistrationSerializer, AdminUserSerializer
 from .models import User
+from django.contrib.auth import authenticate # For checking passwords
+from django.core.mail import send_mail
+from django.conf import settings
+from .serializers import MyTokenObtainPairSerializer # We'll use this to create the token
 
 #
 # --- This is your RegistrationView ---
@@ -88,3 +92,64 @@ class InterviewUserView(APIView):
             return Response({'status': 'User set for interview'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({'error': 'Pending user not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+# 1. This view handles the INITIAL login (username + password)
+# It sends the 2FA code via email.
+class LoginRequestTACView(APIView):
+    permission_classes = [permissions.AllowAny] # Anyone can try to log in
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username') # This can be the email
+        password = request.data.get('password')
+
+        user = authenticate(username=username, password=password)
+
+        if user is not None:
+            # Password is correct. Generate a TAC.
+            tac = user.generate_tac()
+
+            # Send the email
+            subject = 'Your KNOWA Login Code'
+            message = f'Your temporary access code (TAC) is: {tac}\n\nThis code will expire in 5 minutes.'
+
+            try:
+                send_mail(
+                    subject, 
+                    message, 
+                    settings.DEFAULT_FROM_EMAIL, 
+                    [user.email]
+                )
+                return Response({'message': 'A 2FA code has been sent to your email.'}, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({'error': 'Failed to send email.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Username or password was incorrect
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+# 2. This view handles the FINAL login (username + TAC)
+# It sends the real login tokens.
+class LoginVerifyTACView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username')
+        tac_code = request.data.get('tac_code')
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid user or TAC code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the TAC is valid (this also clears it)
+        if user.is_tac_valid(tac_code):
+            # TAC is correct. Manually create the login tokens.
+            tokens = MyTokenObtainPairSerializer.get_token(user)
+
+            return Response({
+                'access': str(tokens.access_token),
+                'refresh': str(tokens),
+            }, status=status.HTTP_200_OK)
+
+        # TAC was wrong or expired
+        return Response({'error': 'Invalid or expired TAC code.'}, status=status.HTTP_400_BAD_REQUEST)

@@ -48,16 +48,40 @@ class AuthService {
 }
 
   // --- LOGIN ---
-  // --- REPLACE your loginUser function with this ---
-  Future<Map<String, dynamic>?> loginUser(String username, String password) async {
+  Future<bool> loginUser(String username, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('${_baseUrl}login/'),
+        Uri.parse('${_baseUrl}login/'), // This now calls LoginRequestTACView
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode(<String, String>{'username': username, 'password': password}),
+        body: jsonEncode(<String, String>{
+          'username': username,
+          'password': password,
+        }),
+      );
+
+      // 200 OK means the password was correct and the email was sent
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // --- NEW 2FA VERIFICATION FUNCTION ---
+  // This function verifies the TAC and *actually* logs the user in.
+  Future<Map<String, dynamic>?> verifyTAC(String username, String tacCode) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${_baseUrl}verify-2fa/'), // This calls LoginVerifyTACView
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode(<String, String>{
+          'username': username,
+          'tac_code': tacCode,
+        }),
       );
 
       if (response.statusCode == 200) {
+        // SUCCESS! The TAC was correct.
+        // The server has sent us the login tokens.
         Map<String, dynamic> responseBody = jsonDecode(response.body);
         String accessToken = responseBody['access'];
 
@@ -67,16 +91,16 @@ class AuthService {
         // 2. Decode the token to get the user's data
         Map<String, dynamic> userData = JwtDecoder.decode(accessToken);
 
-        // 3. --- NEW: Save user data to SharedPreferences ---
+        // 3. Save user data to SharedPreferences
         final SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('username', userData['username']);
         await prefs.setString('member_status', userData['member_status']);
         await prefs.setBool('is_staff', userData['is_staff']);
         await prefs.setString('first_name', userData['first_name']);
-        // ----------------------------------------------
-        
-        return userData; // Return the data for the login screen
+
+        return userData; // Return the user data to navigate to the correct dashboard
       } else {
+        // TAC was wrong, expired, or user not found
         return null;
       }
     } catch (e) {

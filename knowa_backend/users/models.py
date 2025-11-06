@@ -3,6 +3,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.utils.translation import gettext_lazy as _
+import random
+from django.utils import timezone
+import datetime
 
 class User(AbstractUser):
     
@@ -23,6 +26,10 @@ class User(AbstractUser):
 
     phone = models.CharField(max_length=20, blank=True) # For Phone Number
     interests = models.CharField(max_length=255, blank=True) # Will store "Education,Arts"
+
+    # --- 2FA FIELDS ---
+    tac_code = models.CharField(max_length=6, blank=True, null=True)
+    tac_expiry = models.DateTimeField(blank=True, null=True)
 
     # --- FIX from last time ---
     groups = models.ManyToManyField(
@@ -45,3 +52,22 @@ class User(AbstractUser):
         related_name="custom_user_permissions",
         related_query_name="user",
     )
+
+    # --- HELPER FUNCTIONS ---
+    def generate_tac(self):
+        """Generates a 6-digit TAC and sets expiry time for 5 minutes."""
+        tac = str(random.randint(100000, 999999))
+        self.tac_code = tac
+        self.tac_expiry = timezone.now() + datetime.timedelta(minutes=5)
+        self.save(update_fields=['tac_code', 'tac_expiry'])
+        return tac
+
+    def is_tac_valid(self, tac):
+        """Checks if the provided TAC is correct and not expired."""
+        if tac == self.tac_code and timezone.now() < self.tac_expiry:
+            # TAC is valid, clear it to prevent reuse
+            self.tac_code = None
+            self.tac_expiry = None
+            self.save(update_fields=['tac_code', 'tac_expiry'])
+            return True
+        return False

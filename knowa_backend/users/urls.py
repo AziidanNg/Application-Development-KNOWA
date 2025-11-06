@@ -1,30 +1,37 @@
 # users/urls.py
-# connect each url to correct action
 from django.urls import path
 from .views import (
     RegistrationView, 
     PendingUserListView,
     ApproveUserView,
     RejectUserView,
-    InterviewUserView
+    InterviewUserView,
+    #PasswordResetRequestView,
+    #PasswordResetConfirmView,
+
+    # --- IMPORT THE NEW 2FA VIEWS ---
+    LoginRequestTACView,
+    LoginVerifyTACView
 )
-# Import views for login/token creation (we'll add these later)
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import MyTokenObtainPairSerializer
+# We no longer need the default TokenObtainPairView here
 
 urlpatterns = [
-    # Route for the registration endpoint
+    # --- Public User URLs ---
     path('register/', RegistrationView.as_view(), name='register'),
-    
-    path('login/', TokenObtainPairView.as_view(
-        serializer_class=MyTokenObtainPairSerializer # <-- TELL DJANGO TO USE IT
-    ), name='token_obtain_pair'),
+
+    # --- REPLACED LOGIN URL ---
+    path('login/', LoginRequestTACView.as_view(), name='2fa-request-tac'),
+
+    # --- NEW 2FA URL ---
+    path('verify-2fa/', LoginVerifyTACView.as_view(), name='2fa-verify-tac'),
+
+    # --- Password Reset URLs ---
+    #path('password-reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    #path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
 
     # --- ADMIN URLs ---
     path('admin/pending/', PendingUserListView.as_view(), name='pending-users'),
     path('admin/approve/<int:pk>/', ApproveUserView.as_view(), name='approve-user'),
     path('admin/reject/<int:pk>/', RejectUserView.as_view(), name='reject-user'),
-    
-    # --- ADD THIS NEW URL ---
     path('admin/interview/<int:pk>/', InterviewUserView.as_view(), name='interview-user'),
 ]

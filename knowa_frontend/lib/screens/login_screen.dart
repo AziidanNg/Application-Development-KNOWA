@@ -4,6 +4,7 @@ import 'package:knowa_frontend/screens/dashboard_screen.dart';
 import 'package:knowa_frontend/screens/register_screen.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Make sure this is imported
+import 'package:knowa_frontend/screens/verify_2fa_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,40 +43,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // This runs when you tap the "Login" button
   void _handleLogin() async {
-    setState(() { _isLoading = true; });
+  setState(() { _isLoading = true; });
 
-    // Save or remove the username based on the checkbox
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (_rememberMe) {
-      await prefs.setString('remembered_username', _usernameController.text);
-    } else {
-      await prefs.remove('remembered_username');
-    }
-
-    final userData = await _authService.loginUser(
-      _usernameController.text, // This is sent as the "username" (which is the email)
-      _passwordController.text,
-    );
-
-    setState(() { _isLoading = false; });
-    if (!mounted) return;
-
-    if (userData != null) {
-      if (userData['is_staff'] == true) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-        );
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login Failed. Check email/password.'), backgroundColor: Colors.red),
-      );
-    }
+  // Save or remove the username based on the checkbox
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final String username = _usernameController.text;
+  if (_rememberMe) {
+    await prefs.setString('remembered_username', username);
+  } else {
+    await prefs.remove('remembered_username');
   }
+
+  // This now just *requests* the TAC
+  final bool tacSent = await _authService.loginUser(
+    username,
+    _passwordController.text,
+  );
+
+  setState(() { _isLoading = false; });
+  if (!mounted) return;
+
+  if (tacSent) {
+    // --- THIS IS THE NEW NAVIGATION ---
+    // Password was correct, TAC was sent. Now go to the verify screen.
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Verify2FAScreen(username: username),
+      ),
+    );
+    // ---------------------------------
+  } else {
+    // Password was wrong
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Login Failed. Check email/password.'), backgroundColor: Colors.red),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
