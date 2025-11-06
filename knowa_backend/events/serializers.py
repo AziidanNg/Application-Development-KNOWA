@@ -21,7 +21,7 @@ class EventSerializer(serializers.ModelSerializer):
             'location', 
             'start_time', 
             'end_time', 
-
+            'event_image',
             'event_image_url', # <-- We will use this new field
 
             'organizer',
@@ -34,7 +34,9 @@ class EventSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['participants']
         # We add this to hide the old 'event_image' path from the API
-        extra_kwargs = {'event_image': {'write_only': True}} 
+        extra_kwargs = {
+            'event_image': {'write_only': True, 'required': False}
+        }
 
     # --- NEW: The function that builds the full URL ---
     def get_event_image_url(self, obj):

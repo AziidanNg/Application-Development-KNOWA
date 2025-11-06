@@ -2,30 +2,42 @@
 from rest_framework import generics, permissions
 from .models import Event
 from .serializers import EventSerializer
+from django.utils import timezone
 
 # This view will handle BOTH:
 # 1. GET: Listing all events (for everyone)
 # 2. POST: Creating a new event (for Admins only)
 class EventListCreateView(generics.ListCreateAPIView):
-    queryset = Event.objects.all().order_by('start_time') # Get all events
     serializer_class = EventSerializer
 
-    # --- THIS IS THE NEW PERMISSION LOGIC ---
     def get_permissions(self):
+        # This logic is still correct:
+        # Only Admins can POST (create)
         if self.request.method == 'POST':
-            # Only staff (Admins) can POST (create) new events
             return [permissions.IsAdminUser()]
-
-        # Anyone (even public) can GET (view) the list of events
+        # Anyone can GET (view)
         return [permissions.AllowAny()]
 
-    # This automatically sets the 'organizer' to the logged-in admin user
     def perform_create(self, serializer):
+        # This is also correct:
         serializer.save(organizer=self.request.user)
 
-    def get_serializer_context(self):
-        # Pass the request context to the serializer
-        return {'request': self.request}
+    # --- THIS IS THE NEW FIX ---
+    # This function filters the list based on the user
+    def get_queryset(self):
+        user = self.request.user
+
+        # Check if the user is logged in AND is an Admin (is_staff)
+        if user.is_authenticated and user.is_staff:
+            # If they are an Admin, send them ALL events
+            return Event.objects.all().order_by('start_time')
+        else:
+            # If they are a Public User (or not logged in),
+            # send them ONLY Published events that haven't happened yet.
+            return Event.objects.filter(
+                status=Event.EventStatus.PUBLISHED,
+                start_time__gte=timezone.now() # gte = "greater than or equal to now"
+            ).order_by('start_time')
 
 
 # This view will handle GET, PUT, DELETE for a single event

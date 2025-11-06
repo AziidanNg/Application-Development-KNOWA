@@ -1,91 +1,137 @@
 // lib/screens/admin_create_event_screen.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:knowa_frontend/services/event_service.dart'; // Import the service
+import 'package:knowa_frontend/services/event_service.dart';
+import 'package:knowa_frontend/models/event.dart'; // Import the Event model
 import 'package:image_picker/image_picker.dart';
-import 'dart:io'; // To display the file
 
 class AdminCreateEventScreen extends StatefulWidget {
-  const AdminCreateEventScreen({super.key});
+  // --- NEW: It can now optionally receive an event to edit ---
+  final Event? eventToEdit;
+
+  const AdminCreateEventScreen({super.key, this.eventToEdit});
 
   @override
   State<AdminCreateEventScreen> createState() => _AdminCreateEventScreenState();
 }
 
 class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
-  final _imagePicker = ImagePicker();
-  XFile? _imageFile;
   final _formKey = GlobalKey<FormState>();
-  final _eventService = EventService(); // Create an instance of the service
+  final _eventService = EventService();
 
-  // Controllers for text fields
+  // Controllers
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _capacityController = TextEditingController();
   final _calendarLinkController = TextEditingController();
-  final _locationController = TextEditingController(); // For offline location
+  final _locationController = TextEditingController();
 
-  // State for pickers and toggles
+  // State
   DateTime? _selectedDate;
   TimeOfDay? _selectedStartTime;
   TimeOfDay? _selectedEndTime;
   bool _isOnline = true;
-  String _visibility = 'DRAFT'; // Default to Draft
+  String _visibility = 'DRAFT';
   bool _isLoading = false;
 
-  Future<void> _pickImage() async {
-  final XFile? pickedFile = await _imagePicker.pickImage(source: ImageSource.gallery);
-  if (pickedFile != null) {
-    setState(() {
-      _imageFile = pickedFile;
-    });
+  final _imagePicker = ImagePicker();
+  XFile? _imageFile;
+  String? _existingImageUrl; // To show the event's current image
+
+  // --- NEW: Check if we are in "Edit Mode" ---
+  bool get _isEditMode => widget.eventToEdit != null;
+
+  // --- NEW: This function pre-fills the form ---
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditMode) {
+      // We are editing, so fill all the fields
+      final event = widget.eventToEdit!;
+      _titleController.text = event.title;
+      _descriptionController.text = event.description;
+      _capacityController.text = event.capacity.toString();
+      _calendarLinkController.text = event.calendarLink ?? '';
+      _locationController.text = event.location;
+      _selectedDate = event.startTime;
+      _selectedStartTime = TimeOfDay.fromDateTime(event.startTime);
+      _selectedEndTime = TimeOfDay.fromDateTime(event.endTime);
+      _isOnline = event.isOnline;
+      _visibility = event.status;
+      _existingImageUrl = event.imageUrl;
+    }
   }
-  }
 
-  // --- THIS FUNCTION IS NOW COMPLETE ---
-  void _handleCreateEvent() async {
-    // First, check if the form is valid
-    if (_formKey.currentState!.validate() && 
-        _selectedDate != null && 
-        _selectedStartTime != null && 
-        _selectedEndTime != null) {
-
-      setState(() { _isLoading = true; });
-
-      // Combine Date and Time into ISO 8601 strings for Django
-      final startDateTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedStartTime!.hour, _selectedStartTime!.minute);
-      final endDateTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedEndTime!.hour, _selectedEndTime!.minute);
-
-      // Call the API service
-      final result = await _eventService.createEvent(
-        title: _titleController.text,
-        description: _descriptionController.text,
-        location: _locationController.text,
-        startTime: startDateTime.toIso8601String(),
-        endTime: endDateTime.toIso8601String(),
-        capacity: int.tryParse(_capacityController.text) ?? 50,
-        status: _visibility,
-        isOnline: _isOnline,
-        calendarLink: _calendarLinkController.text,
-        imageFile: _imageFile,
-      );
-
-      setState(() { _isLoading = false; });
-      if (!mounted) return;
-
-      if (result['success']) {
-        // Pop back to the event list and send 'true' to force a refresh
-        Navigator.of(context).pop(true); 
-      } else {
-        // Show an error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create event: ${result['error']}')),
-        );
-      }
-    } else {
-      // Show a generic validation error
+  // --- RENAMED: from _handleCreateEvent to _handleSubmit ---
+  void _handleSubmit() async {
+    if (!_formKey.currentState!.validate() || _selectedDate == null || _selectedStartTime == null || _selectedEndTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields.')),
+      );
+      return;
+    }
+
+    setState(() { _isLoading = true; });
+
+    final startDateTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedStartTime!.hour, _selectedStartTime!.minute);
+    final endDateTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedEndTime!.hour, _selectedEndTime!.minute);
+
+    // This is the data we will send
+    final eventData = {
+      'title': _titleController.text,
+      'description': _descriptionController.text,
+      'location': _locationController.text,
+      'startTime': startDateTime.toIso8601String(),
+      'endTime': endDateTime.toIso8601String(),
+      'capacity': int.tryParse(_capacityController.text) ?? 50,
+      'status': _visibility,
+      'isOnline': _isOnline,
+      'calendarLink': _calendarLinkController.text,
+      'imageFile': _imageFile,
+    };
+
+    // --- NEW: Decide whether to create or update ---
+    final Map<String, dynamic> result;
+    if (_isEditMode) {
+      // Call the UPDATE function
+      result = await _eventService.updateEvent(
+        widget.eventToEdit!.id,
+        title: eventData['title'] as String,
+        description: eventData['description'] as String,
+        location: eventData['location'] as String,
+        startTime: eventData['startTime'] as String,
+        endTime: eventData['endTime'] as String,
+        capacity: eventData['capacity'] as int,
+        status: eventData['status'] as String,
+        isOnline: eventData['isOnline'] as bool,
+        calendarLink: eventData['calendarLink'] as String?,
+        imageFile: eventData['imageFile'] as XFile?,
+      );
+    } else {
+      // Call the CREATE function
+      result = await _eventService.createEvent(
+        title: eventData['title'] as String,
+        description: eventData['description'] as String,
+        location: eventData['location'] as String,
+        startTime: eventData['startTime'] as String,
+        endTime: eventData['endTime'] as String,
+        capacity: eventData['capacity'] as int,
+        status: eventData['status'] as String,
+        isOnline: eventData['isOnline'] as bool,
+        calendarLink: eventData['calendarLink'] as String?,
+        imageFile: eventData['imageFile'] as XFile?,
+      );
+    }
+
+    setState(() { _isLoading = false; });
+    if (!mounted) return;
+
+    if (result['success']) {
+      Navigator.of(context).pop(true); // Send 'true' back to refresh the list
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save event: ${result['error']}')),
       );
     }
   }
@@ -94,7 +140,8 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Event'),
+        // --- NEW: Dynamic title ---
+        title: Text(_isEditMode ? 'Edit Event' : 'New Event'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
@@ -115,7 +162,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 16),
 
-              // --- ADD THIS NEW IMAGE PICKER WIDGET ---
+              // --- NEW: Image Picker now shows existing image ---
               Container(
                 height: 150,
                 width: double.infinity,
@@ -126,26 +173,26 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                 ),
                 child: InkWell(
                   onTap: _pickImage,
-                  child: _imageFile == null
-                      ? const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add_a_photo_outlined, color: Colors.grey),
-                            SizedBox(height: 8),
-                            Text('Add Event Image', style: TextStyle(color: Colors.grey)),
-                          ],
-                        )
-                      : Image.file(
-                          File(_imageFile!.path),
-                          fit: BoxFit.cover,
-                        ),
+                  child: _imageFile != null
+                      ? Image.file(File(_imageFile!.path), fit: BoxFit.cover)
+                      : (_existingImageUrl != null && _existingImageUrl!.isNotEmpty)
+                          ? Image.network(_existingImageUrl!, fit: BoxFit.cover)
+                          : const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_a_photo_outlined, color: Colors.grey),
+                                SizedBox(height: 8),
+                                Text('Add Event Image', style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Date Picker
               TextFormField(
                 readOnly: true,
+                // --- NEW: Pre-fills the hint text ---
                 decoration: _buildInputDecoration(
                   hint: _selectedDate == null ? 'Select Date' : DateFormat('E, MMM d, yyyy').format(_selectedDate!),
                   icon: Icons.calendar_today_outlined,
@@ -154,7 +201,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Time Pickers (Start and End)
+              // Time Pickers
               Row(
                 children: [
                   Expanded(
@@ -194,7 +241,6 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Location field (only shows if "Offline" is selected)
               if (!_isOnline)
                 TextFormField(
                   controller: _locationController,
@@ -249,20 +295,19 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Create Event Button
+              // --- NEW: Dynamic button text ---
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  // THIS IS NOW CONNECTED
-                  onPressed: _isLoading ? null : _handleCreateEvent,
+                  onPressed: _isLoading ? null : _handleSubmit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade700,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   child: _isLoading 
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Create Event', style: TextStyle(fontSize: 16, color: Colors.white)),
+                      : Text(_isEditMode ? 'Update Event' : 'Create Event', style: const TextStyle(fontSize: 16, color: Colors.white)),
                 ),
               ),
             ],
@@ -270,6 +315,19 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
         ),
       ),
     );
+  }
+
+  // ... (Your _buildInputDecoration, _selectDate, and _selectTime helpers are here) ...
+
+  // Helper to pick an image
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = pickedFile;
+        _existingImageUrl = null; // Clear existing image if a new one is picked
+      });
+    }
   }
 
   // Helper function for text field styling
@@ -291,7 +349,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
+      firstDate: DateTime(2020),
       lastDate: DateTime(2101),
     );
     if (picked != null && picked != _selectedDate) {

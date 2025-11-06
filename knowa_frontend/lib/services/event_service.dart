@@ -14,13 +14,25 @@ class EventService {
                           : 'http://127.0.0.1:8000/api/events/';
 
   // Fetches the list of all events for the dashboard
+  // Fetches the list of all events
   Future<List<Event>> getEvents() async {
+    final _storage = const FlutterSecureStorage();
+    final token = await _storage.read(key: 'access_token');
+    // ---------------------
+
     try {
-      final response = await http.get(Uri.parse(_baseUrl));
+      // --- AND WE ADD THE TOKEN HEADER HERE ---
+      final response = await http.get(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token', // Send the admin's token
+        },
+      );
+      // ------------------------------------
 
       if (response.statusCode == 200) {
         // Decode the list of events
-        // We need to decode the UTF-8 body properly
         List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
 
         // Turn each JSON object into an Event object
@@ -108,6 +120,70 @@ Future<Map<String, dynamic>> createEvent({
     } else {
       return {'success': false, 'error': jsonDecode(utf8.decode(response.bodyBytes))};
     }
+  } catch (e) {
+    return {'success': false, 'error': 'Connection failed: ${e.toString()}'};
+  }
+}
+
+  // ---NEW FUNCTION TO UPDATE AN EVENT ---
+Future<Map<String, dynamic>> updateEvent(
+  int eventId, // <-- The ID of the event to update
+  {
+  required String title,
+  required String description,
+  required String location,
+  required String startTime,
+  required String endTime,
+  required int capacity,
+  required String status,
+  required bool isOnline,
+  String? calendarLink,
+  XFile? imageFile,
+}) async {
+
+  final _storage = const FlutterSecureStorage();
+  final token = await _storage.read(key: 'access_token');
+
+  try {
+    // We use PATCH for partial updates
+    var request = http.MultipartRequest('PATCH', Uri.parse('$_baseUrl$eventId/'));
+
+    // Add all the text fields
+    request.fields['title'] = title;
+    request.fields['description'] = description;
+    request.fields['location'] = isOnline ? 'Online' : location;
+    request.fields['start_time'] = startTime;
+    request.fields['end_time'] = endTime;
+    request.fields['capacity'] = capacity.toString();
+    request.fields['status'] = status;
+    request.fields['is_online'] = isOnline.toString();
+    if (calendarLink != null && calendarLink.isNotEmpty) {
+      request.fields['calendar_link'] = calendarLink;
+    }
+
+    // Add the authorization token
+    request.headers['Authorization'] = 'Bearer $token';
+
+    // Add the image file *only if* the user picked a new one
+    if (imageFile != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'event_image',
+          imageFile.path,
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      );
+    }
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) { // 200 means "OK"
+      return {'success': true, 'data': jsonDecode(utf8.decode(response.bodyBytes))};
+    } else {
+      return {'success': false, 'error': jsonDecode(utf8.decode(response.bodyBytes))};
+    }
+
   } catch (e) {
     return {'success': false, 'error': 'Connection failed: ${e.toString()}'};
   }

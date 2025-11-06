@@ -134,7 +134,23 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
     final endTime = DateFormat('h:mm a').format(event.endTime);
     final location = event.isOnline ? 'Online' : event.location;
 
-    return Padding(
+    // --- WRAP THIS WIDGET ---
+  return GestureDetector(
+    onTap: () async {
+      // Open the "Edit" screen and WAIT for a result
+      final result = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (context) => AdminCreateEventScreen(eventToEdit: event), // Pass the event
+          fullscreenDialog: true,
+        ),
+      );
+
+      // If the page returns 'true', refresh the list
+      if (result == true) {
+        _loadEvents();
+      }
+    },
+    child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         children: [
@@ -173,6 +189,6 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
           ),
         ],
       ),
-    );
+    ));
   }
 }
