@@ -134,61 +134,116 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
     final endTime = DateFormat('h:mm a').format(event.endTime);
     final location = event.isOnline ? 'Online' : event.location;
 
-    // --- WRAP THIS WIDGET ---
-  return GestureDetector(
-    onTap: () async {
-      // Open the "Edit" screen and WAIT for a result
-      final result = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(
-          builder: (context) => AdminCreateEventScreen(eventToEdit: event), // Pass the event
-          fullscreenDialog: true,
-        ),
-      );
-
-      // If the page returns 'true', refresh the list
-      if (result == true) {
-        _loadEvents();
-      }
-    },
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '$date · $time – $endTime',
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
-                Text(
-                  location,
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
-              ],
-            ),
+    return GestureDetector(
+      onTap: () async {
+        // This is your EDIT logic
+        final result = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (context) => AdminCreateEventScreen(eventToEdit: event),
+            fullscreenDialog: true,
           ),
-          const SizedBox(width: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12.0),
-            child: Image.network(
-              event.imageUrl,
-              width: 100,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(width: 100, height: 80, color: Colors.grey[200], child: const Icon(Icons.broken_image, size: 40));
+        );
+        if (result == true) {
+          _loadEvents();
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        child: Row(
+          children: [
+            // --- NEW: Event Image ---
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12.0),
+              child: Image.network(
+                event.imageUrl,
+                width: 80, // Slightly smaller
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(width: 80, height: 80, color: Colors.grey[200], child: const Icon(Icons.broken_image, size: 40));
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+
+            // --- Event Details ---
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.title,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$date · $time – $endTime',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  Text(
+                    location,
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            ),
+
+            // --- NEW: DELETE BUTTON ---
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: () {
+                // This stops the tap from triggering the "edit" action
+                (e) => e.stopPropagation(); 
+                _confirmDelete(event); // Call the delete confirmation
               },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ));
+    );
+  }
+
+  // --- ADD THIS NEW CONFIRMATION FUNCTION ---
+  // This shows a pop-up to confirm deletion
+  Future<void> _confirmDelete(Event event) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Event?'),
+          content: Text('Are you sure you want to delete "${event.title}"? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // Close the dialog
+              },
+            ),
+            TextButton(
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onPressed: () async {
+                // Call the API to delete
+                bool success = await _eventService.deleteEvent(event.id);
+
+                if (!mounted) return;
+
+                Navigator.of(dialogContext).pop(); // Close the dialog
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Event deleted successfully'), backgroundColor: Colors.green),
+                  );
+                  _loadEvents(); // Refresh the list
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to delete event'), backgroundColor: Colors.red),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }

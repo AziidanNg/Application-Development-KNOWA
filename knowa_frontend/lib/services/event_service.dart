@@ -188,4 +188,24 @@ Future<Map<String, dynamic>> updateEvent(
     return {'success': false, 'error': 'Connection failed: ${e.toString()}'};
   }
 }
+
+  // --- NEW FUNCTION TO DELETE AN EVENT ---
+Future<bool> deleteEvent(int eventId) async {
+  final _storage = const FlutterSecureStorage();
+  final token = await _storage.read(key: 'access_token');
+
+  try {
+    final response = await http.delete(
+      Uri.parse('$_baseUrl$eventId/'), // Call DELETE on the event's URL
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    return response.statusCode == 204; // 204 means "No Content" (success)
+  } catch (e) {
+    return false;
+  }
+}
 }

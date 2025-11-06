@@ -236,7 +236,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                   setState(() { _isOnline = index == 0; });
                 },
                 borderRadius: BorderRadius.circular(8.0),
-                constraints: BoxConstraints(minWidth: (MediaQuery.of(context).size.width - 50) / 2, minHeight: 40.0),
+                constraints: BoxConstraints(minWidth: (MediaQuery.of(context).size.width - 52) / 2, minHeight: 40.0),
                 children: const [Text('Online'), Text('Offline')],
               ),
               const SizedBox(height: 16),
