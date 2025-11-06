@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:knowa_frontend/models/pending_user.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   // Use 10.0.2.2 for the Android emulator to connect to your PC's localhost
@@ -47,36 +48,35 @@ class AuthService {
 }
 
   // --- LOGIN ---
+  // --- REPLACE your loginUser function with this ---
   Future<Map<String, dynamic>?> loginUser(String username, String password) async {
     try {
       final response = await http.post(
         Uri.parse('${_baseUrl}login/'),
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode(<String, String>{
-          'username': username,
-          'password': password,
-        }),
+        body: jsonEncode(<String, String>{'username': username, 'password': password}),
       );
 
       if (response.statusCode == 200) {
-        // Login successful
         Map<String, dynamic> responseBody = jsonDecode(response.body);
         String accessToken = responseBody['access'];
 
-        // Securely store the token
+        // 1. Securely store the token
         await _storage.write(key: 'access_token', value: accessToken);
 
-        // --- NEW LOGIC ---
-        // Decode the token to get the user's data
+        // 2. Decode the token to get the user's data
         Map<String, dynamic> userData = JwtDecoder.decode(accessToken);
-        return {
-          'username': userData['username'],
-          'member_status': userData['member_status'],
-          'is_staff': userData['is_staff'],
-        };
+
+        // 3. --- NEW: Save user data to SharedPreferences ---
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('username', userData['username']);
+        await prefs.setString('member_status', userData['member_status']);
+        await prefs.setBool('is_staff', userData['is_staff']);
+        await prefs.setString('first_name', userData['first_name']);
+        // ----------------------------------------------
         
+        return userData; // Return the data for the login screen
       } else {
-        // Login failed
         return null;
       }
     } catch (e) {
@@ -84,10 +84,28 @@ class AuthService {
     }
   }
 
+  // --- ADD THIS NEW FUNCTION ---
+  Future<Map<String, dynamic>> getUserData() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    return {
+      'username': prefs.getString('username') ?? 'User',
+      'member_status': prefs.getString('member_status') ?? 'PUBLIC',
+      'is_staff': prefs.getBool('is_staff') ?? false,
+      'first_name': prefs.getString('first_name') ?? prefs.getString('username') ?? 'User',
+    };
+  }
+
   Future<void> logout() async {
     // Delete the tokens from secure storage
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
+
+    // --- NEW: Clear the user data ---
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('username');
+    await prefs.remove('member_status');
+    await prefs.remove('is_staff');
+    await prefs.remove('first_name');
   }
 
   // --- ADMIN: GET PENDING USERS ---

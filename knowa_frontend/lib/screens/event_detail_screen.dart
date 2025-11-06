@@ -5,14 +5,19 @@ import 'package:intl/intl.dart'; // For formatting dates
 
 class EventDetailScreen extends StatelessWidget {
   final Event event;
+  final Map<String, dynamic> userData;
 
-  const EventDetailScreen({super.key, required this.event});
+  const EventDetailScreen({super.key, required this.event, required this.userData});
 
   @override
   Widget build(BuildContext context) {
     // Format the date (e.g., "Sat, Nov 9, 2025 • 10:00 AM – 12:00 PM")
     final String formattedDate = DateFormat('E, MMM d, yyyy • h:mm a').format(event.startTime);
     final String formattedEndTime = DateFormat('h:mm a').format(event.endTime);
+
+    // --- 2. CHECK THE USER'S ROLE ---
+    final bool isMember = userData['member_status'] == 'MEMBER' || userData['is_staff'] == true;
+    final String buttonText = isMember ? 'Join as Crew' : 'Register Now';
 
     return Scaffold(
       appBar: AppBar(
@@ -87,14 +92,14 @@ class EventDetailScreen extends StatelessWidget {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () { /* TODO: Add Register Logic */ },
+                      onPressed: () { /* TODO: Add Register/Join Crew Logic */ },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue.shade700,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text(
-                        'Register Now',
-                        style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                      child: Text(
+                        buttonText, // <-- IT'S DYNAMIC NOW
+                        style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),

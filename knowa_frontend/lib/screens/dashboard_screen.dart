@@ -2,10 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/models/event.dart';
 import 'package:knowa_frontend/services/event_service.dart';
-import 'package:intl/intl.dart'; // For formatting dates
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/event_detail_screen.dart';
+import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,24 +16,36 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final EventService _eventService = EventService();
-  late Future<List<Event>> _eventsFuture;
+  final AuthService _authService = AuthService();
 
+  // This will hold our user data
+  Map<String, dynamic>? _userData;
+
+  // This will hold the events
+  Future<List<Event>>? _eventsFuture;
+
+  // We've moved the user loading to its own function
   @override
   void initState() {
     super.initState();
-    // Fetch the events when the screen loads
-    _eventsFuture = _eventService.getEvents();
+    _loadData();
+  }
+
+  // This function gets the user data first, then loads the events
+  void _loadData() async {
+    final userData = await _authService.getUserData();
+    setState(() {
+      _userData = userData;
+      _eventsFuture = _eventService.getEvents();
+    });
   }
 
   void _handleLogout(BuildContext context) async {
-    final authService = AuthService();
-    await authService.logout();
-
-    // Go back to Login Screen and remove all other screens from history
+    await _authService.logout();
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (Route<dynamic> route) => false, // This clears the stack
+        (Route<dynamic> route) => false,
       );
     }
   }
@@ -52,7 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black),
-            onPressed: () => _handleLogout(context), // Call the logout function
+            onPressed: () => _handleLogout(context),
           ),
         ],
       ),
@@ -62,68 +74,96 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // "Hi, User" text
-            const Text(
-              'Hi, User 👋',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            // This now reads the state variable, which is much safer
+            Text(
+              'Hi, ${_userData?['username'] ?? 'User'} 👋',
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
 
             // "Upcoming Events" Section
-            const Text(
-              'Upcoming Events',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildEventList(),
+                const Text(
+                  'Upcoming Events',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                _buildEventList(),
+                
+                // --- ADD ALL THIS NEW CODE ---
 
-            // We will build these other sections in later sprints
-            const SizedBox(height: 24),
-            const Text(
-              'Donation',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                // --- 1. Donation Section ---
+                const SizedBox(height: 24),
+                const Text(
+                  'Donation',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                _buildDonationCard(), // Call the new helper widget
+
+                // --- 2. Announcements Section ---
+                const SizedBox(height: 24),
+                const Text(
+                  'Announcements',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                _buildAnnouncementCard(
+                  title: 'Join KNOWA',
+                  text: 'Be Part of the Movement for Knowledge Empowerment!',
+                ),
+                const SizedBox(height: 12),
+                _buildAnnouncementCard(
+                  title: 'KNOWA EduTalks',
+                  text: 'Big dreams start with small stories. Don\'t miss KNOWA EduTalks this December',
+                ),
+
+                // --- 3. My Activities Section ---
+                const SizedBox(height: 24),
+                const Text(
+                  'My Activities',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                _buildActivityCard(
+                  title: 'Events Joined',
+                  value: '12', // This is a placeholder
+                ),
+                
+                // --- END OF NEW CODE ---
+              ],
             ),
-            // ... Donation UI ...
-            const SizedBox(height: 24),
-            const Text(
-              'Announcements',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            // ... Announcements UI ...
-          ],
-        ),
-      ),
-      // We will build the main navigation bar in a later step
+          ),
+      // TODO: Add the Bottom Navigation Bar here
     );
   }
 
-  // This widget builds the horizontal list of events
+  // This widget builds the list of events
   Widget _buildEventList() {
+    // If the user data or events haven't loaded, show a spinner
+    if (_eventsFuture == null || _userData == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return FutureBuilder<List<Event>>(
       future: _eventsFuture,
       builder: (context, snapshot) {
-        // 1. While loading
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
-        } 
-        // 2. If there's an error
-        else if (snapshot.hasError) {
+        } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
-        } 
-        // 3. If there's no data
-        else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text('No upcoming events.'));
         }
 
-        // 4. We have data! Build the horizontal list
         List<Event> events = snapshot.data!;
+
         return Container(
-          height: 230, // Fixed height for the horizontal list
+          height: 230, // Set a fixed height for the horizontal list
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: events.length,
             itemBuilder: (context, index) {
-              return _buildEventCard(context, events[index]);
+              return _buildEventCard(context, events[index], _userData!);
             },
           ),
         );
@@ -131,17 +171,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // This widget is the "Upcoming Events" card from your design
-  Widget _buildEventCard(BuildContext context, Event event) {
-    // Format the date (e.g., "Nov 9, 2025")
+  // This widget is the card from your design
+  Widget _buildEventCard(BuildContext context, Event event, Map<String, dynamic> userData) {
     final String formattedDate = DateFormat('MMM d, yyyy').format(event.startTime);
 
     return GestureDetector(
       onTap: () {
-         //Navigate to EventDetailScreen
-         Navigator.of(context).push(
-           MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)),
-         );
+        // Pass the user data to the detail screen
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => EventDetailScreen(event: event, userData: userData)),
+        );
       },
       child: Container(
         width: 250, // Fixed width for each card
@@ -156,13 +195,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: 150,
                 width: 250,
                 fit: BoxFit.cover,
-                // Handle loading
+                // Handle image loading/error
                 loadingBuilder: (context, child, progress) {
-                  return progress == null 
-                      ? child 
-                      : Container(height: 150, color: Colors.grey[200], child: const Center(child: CircularProgressIndicator()));
+                  return progress == null ? child : Container(height: 150, color: Colors.grey[200], child: const Center(child: CircularProgressIndicator()));
                 },
-                // Handle broken images
                 errorBuilder: (context, error, stackTrace) {
                   return Container(height: 150, color: Colors.grey[200], child: Icon(Icons.broken_image, color: Colors.grey, size: 40));
                 },
@@ -175,11 +211,103 @@ class _DashboardScreenState extends State<DashboardScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
             Text(
-              formattedDate, // Use our formatted date
+              formattedDate,
               style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDonationCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Goal: RM10,000', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('6000', style: TextStyle(color: Colors.grey)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // This is the progress bar
+            LinearProgressIndicator(
+              value: 0.6, // 6000 / 10000 = 0.6
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () { /* TODO: Navigate to Donation Page */ },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade700,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Donate', style: TextStyle(color: Colors.white)),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- WIDGET FOR ANNOUNCEMENT CARD ---
+  Widget _buildAnnouncementCard({required String title, required String text}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(text, style: TextStyle(color: Colors.grey[700])),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Placeholder for the "Join KNOWA" button
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- WIDGET FOR ACTIVITY CARD ---
+  Widget _buildActivityCard({required String title, required String value}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        width: 150, // Fixed width
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: TextStyle(color: Colors.grey[700])),
+            const SizedBox(height: 8),
+            Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
