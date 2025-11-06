@@ -76,7 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             // This now reads the state variable, which is much safer
             Text(
-              'Hi, ${_userData?['username'] ?? 'User'} 👋',
+              'Hi, ${_userData?['first_name'] ?? 'User'} 👋',
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
