@@ -1,6 +1,8 @@
 // lib/models/pending_user.dart
 
 // This class matches the 'profile' data from your backend
+// lib/models/pending_user.dart
+
 class UserProfile {
   final String education;
   final String occupation;
@@ -8,6 +10,7 @@ class UserProfile {
   final int age;
   final String? resumeUrl;
   final String? idUrl;
+  final String? paymentReceiptUrl; // <-- 1. ADD THIS
 
   UserProfile({
     required this.education,
@@ -16,16 +19,26 @@ class UserProfile {
     required this.age,
     this.resumeUrl,
     this.idUrl,
+    this.paymentReceiptUrl, // <-- 2. ADD THIS
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    // Helper to build full URLs for files
+    //String? getFullUrl(String? path) {
+      //if (path == null || path.isEmpty) return null;
+      // Use 10.0.2.2 for Android emulator
+      //String baseUrl = 'http://10.0.2.2:8000';
+      //return '$baseUrl$path';
+    //}
+
     return UserProfile(
       education: json['education'] ?? '',
       occupation: json['occupation'] ?? '',
       reasonForJoining: json['reason_for_joining'] ?? '',
       age: json['age'] ?? 0,
-      resumeUrl: json['resume'],
-      idUrl: json['identification'],
+      resumeUrl: json['resume_url'], // <-- Use new field
+      idUrl: json['identification_url'], // <-- Use new field
+      paymentReceiptUrl: json['payment_receipt_url'], // <-- Use new field
     );
   }
 }

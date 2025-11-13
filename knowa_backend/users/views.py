@@ -44,6 +44,11 @@ class PendingUserListView(generics.ListAPIView):
     def get_queryset(self):
         # Return all users where member_status is 'PENDING'
         return User.objects.filter(member_status=User.MemberStatus.PENDING)
+    
+    def get_serializer_context(self):
+        # This passes the 'request' to AdminUserSerializer,
+        # which passes it to UserProfileSerializer
+        return {'request': self.request}
 
 # 2. View to APPROVE a user
 class ApproveUserView(APIView):
@@ -56,7 +61,7 @@ class ApproveUserView(APIView):
                 pk=pk, 
                 member_status__in=[User.MemberStatus.PENDING, User.MemberStatus.INTERVIEW]
             )
-            user.member_status = User.MemberStatus.MEMBER # Change status to MEMBER
+            user.member_status = User.MemberStatus.APPROVED_UNPAID # Change status to MEMBER
             user.save()
             return Response({'status': 'User approved'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
@@ -226,3 +231,52 @@ class SubmitApplicationView(generics.UpdateAPIView):
         if user.member_status == User.MemberStatus.PUBLIC:
             user.member_status = User.MemberStatus.PENDING
             user.save()
+
+# --- ADD THESE NEW PAYMENT FLOW VIEWS ---
+
+# 5. View for a user to upload their payment receipt
+class UploadReceiptView(generics.UpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserProfileSerializer
+    queryset = UserProfile.objects.all()
+
+    def get_object(self):
+        # Users can only update their own profile
+        return self.request.user.profile
+
+    def perform_update(self, serializer):
+        # Save the payment_receipt file
+        serializer.save()
+
+        # This doesn't make them a member yet.
+        # It just submits the receipt for admin review.
+
+
+# 6. View for Admins to see users awaiting payment confirmation
+class PendingPaymentListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = AdminUserSerializer # We can reuse this serializer
+
+    def get_queryset(self):
+        # Return all users who are "Approved (Unpaid)"
+        # AND have uploaded a payment receipt
+        return User.objects.filter(
+            member_status=User.MemberStatus.APPROVED_UNPAID,
+            profile__payment_receipt__isnull=False # Only show users who have uploaded a receipt
+        )
+
+# 7. View for Admins to confirm payment and make user a MEMBER
+class ConfirmPaymentView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, pk, format=None):
+        try:
+            user = User.objects.get(
+                pk=pk, 
+                member_status=User.MemberStatus.APPROVED_UNPAID
+            )
+            user.member_status = User.MemberStatus.MEMBER # <-- FINAL STEP
+            user.save()
+            return Response({'status': 'Payment confirmed. User is now a member.'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found or not awaiting payment.'}, status=status.HTTP_404_NOT_FOUND)

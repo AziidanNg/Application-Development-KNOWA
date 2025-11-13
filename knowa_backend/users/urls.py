@@ -13,7 +13,10 @@ from .views import (
     LoginRequestTACView,
     LoginVerifyTACView,
 
-    SubmitApplicationView
+    SubmitApplicationView,
+    UploadReceiptView,
+    PendingPaymentListView,
+    ConfirmPaymentView
 )
 # We no longer need the default TokenObtainPairView here
 
@@ -34,9 +37,16 @@ urlpatterns = [
     # --- NEW: URL for submitting an application ---
     path('apply/', SubmitApplicationView.as_view(), name='submit-application'),
 
+    # --- 2. ADD NEW URL for uploading a receipt ---
+    path('upload-receipt/', UploadReceiptView.as_view(), name='upload-receipt'),
+
     # --- ADMIN URLs ---
     path('admin/pending/', PendingUserListView.as_view(), name='pending-users'),
     path('admin/approve/<int:pk>/', ApproveUserView.as_view(), name='approve-user'),
     path('admin/reject/<int:pk>/', RejectUserView.as_view(), name='reject-user'),
     path('admin/interview/<int:pk>/', InterviewUserView.as_view(), name='interview-user'),
+
+    # --- 2. ADD NEW URLs for payment confirmation ---
+    path('admin/pending-payments/', PendingPaymentListView.as_view(), name='pending-payments'),
+    path('admin/confirm-payment/<int:pk>/', ConfirmPaymentView.as_view(), name='confirm-payment'),
 ]

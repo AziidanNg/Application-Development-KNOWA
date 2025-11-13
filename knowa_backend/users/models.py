@@ -15,12 +15,13 @@ class User(AbstractUser):
         PUBLIC = 'PUBLIC', 'Public User'
         PENDING = 'PENDING', 'Pending Member'
         INTERVIEW = 'INTERVIEW', 'Interview'  # <-- for interview option
+        APPROVED_UNPAID = 'APPROVED_UNPAID', 'Approved (Unpaid)'
         MEMBER = 'MEMBER', 'NGO Member'
         REJECTED = 'REJECTED', 'Rejected'
     
     # --- UPDATED FIELD ---
     member_status = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=MemberStatus.choices,
         default=MemberStatus.PUBLIC  # <-- Default is now PUBLIC
     )
@@ -94,6 +95,7 @@ class UserProfile(models.Model):
     # We need Pillow installed for this (which you already have)
     resume = models.FileField(upload_to='resumes/', blank=True, null=True)
     identification = models.FileField(upload_to='identifications/', blank=True, null=True)
+    payment_receipt = models.FileField(upload_to='receipts/', blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username}'s Profile"

@@ -288,4 +288,78 @@ Future<bool> updateUserStatus(int userId, String action) async {
     return false;
   }
 }
+
+// This allows the user to upload their payment receipt
+Future<bool> uploadReceipt(File receiptFile) async {
+  final token = await _storage.read(key: 'access_token');
+  var request = http.MultipartRequest(
+    'PUT', // We use PUT/PATCH to update an existing profile
+    Uri.parse('${_baseUrl}upload-receipt/'), // Calls your UploadReceiptView
+  );
+
+  // --- Add the receipt file ---
+  final mimeType = lookupMimeType(receiptFile.path);
+  final mediaType = mimeType != null ? MediaType.parse(mimeType) : null;
+
+  request.files.add(
+    await http.MultipartFile.fromPath(
+      'payment_receipt', // Must match your Django 'payment_receipt' model field
+      receiptFile.path,
+      contentType: mediaType,
+    ),
+  );
+
+  // Add the authorization token
+  request.headers['Authorization'] = 'Bearer $token';
+
+  try {
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    return response.statusCode == 200; // 200 OK for an update
+  } catch (e) {
+    return false;
+  }
+}
+
+// --- ADMIN: GET USERS AWAITING PAYMENT ---
+Future<List<PendingUser>> getPendingPayments() async {
+  final token = await _storage.read(key: 'access_token');
+  try {
+    final response = await http.get(
+      Uri.parse('${_baseUrl}admin/pending-payments/'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
+      // We can reuse the PendingUser model, it has all the data we need
+      return jsonList.map((json) => PendingUser.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load pending payments.');
+    }
+  } catch (e) {
+    throw Exception('Connection failed: ${e.toString()}');
+  }
+}
+
+// --- ADMIN: CONFIRM A USER'S PAYMENT ---
+Future<bool> confirmPayment(int userId) async {
+  final token = await _storage.read(key: 'access_token');
+  try {
+    final response = await http.post(
+      Uri.parse('${_baseUrl}admin/confirm-payment/$userId/'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return response.statusCode == 200; // Return true if successful
+  } catch (e) {
+    return false;
+  }
+}
 }

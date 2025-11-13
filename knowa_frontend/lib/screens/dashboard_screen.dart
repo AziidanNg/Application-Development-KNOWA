@@ -7,6 +7,7 @@ import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/event_detail_screen.dart';
 import 'package:knowa_frontend/screens/membership_application_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:knowa_frontend/screens/payment_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -335,6 +336,9 @@ Widget _buildApplicationStatusWidget() {
   final String status = _userData?['member_status'] ?? 'PUBLIC';
 
   switch (status) {
+    case 'APPROVED_UNPAID':
+      return _buildPaymentCard(); // Show the "Pay Fee" card
+
     case 'PUBLIC':
       // 1. If they are public, show the "Join KNOWA" button
       return _buildAnnouncementCard(
@@ -376,6 +380,44 @@ Widget _buildApplicationStatusWidget() {
     default:
       return const SizedBox.shrink();
   }
+}
+
+// --- ADD THIS HELPER for the new "Pay Fee" card ---
+Widget _buildPaymentCard() {
+  return Card(
+    elevation: 2,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(color: Colors.green.shade700, width: 2)
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Congratulations! Your application is approved.',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+          ),
+          const SizedBox(height: 8),
+          const Text('Please pay the one-time membership fee to become a full member.'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const PaymentScreen()),
+                );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Pay Membership Fee', style: TextStyle(color: Colors.white)),
+          )
+        ],
+      ),
+    ),
+  );
 }
 
 // --- ADD THIS HELPER for the new status cards ---

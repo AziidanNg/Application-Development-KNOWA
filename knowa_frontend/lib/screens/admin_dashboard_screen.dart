@@ -4,6 +4,7 @@ import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/admin_manage_applications_screen.dart';
 import 'package:knowa_frontend/screens/admin_manage_events_screen.dart';
+import 'package:knowa_frontend/screens/admin_pending_payments_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -80,6 +81,17 @@ class AdminDashboardScreen extends StatelessWidget {
                               ); 
               },
               isPrimary: true,
+            ),
+            const SizedBox(height: 12),
+            _buildActionButton(
+              title: 'Pending Payments',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AdminPendingPaymentsScreen(),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 12),
             _buildActionButton(

@@ -15,11 +15,11 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
         UserProfile.objects.create(user=instance)
     else:
         # 2. An existing user is saved
-        try:
-            # Try to save the existing profile
-            instance.profile.save()
-        except UserProfile.DoesNotExist:
-            # --- THIS IS THE FIX ---
-            # If the profile doesn't exist (like for aziidanadmin),
-            # create one for them on the fly.
+        # --- THIS IS THE FIX ---
+        # Check if the user has a profile.
+        if not hasattr(instance, 'profile'):
+            # If not (like for your admin), create one.
             UserProfile.objects.create(user=instance)
+        else:
+            # If they do have a profile, save it (this is good practice).
+            instance.profile.save()

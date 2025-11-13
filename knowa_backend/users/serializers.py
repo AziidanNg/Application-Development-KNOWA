@@ -9,17 +9,56 @@ import re # For password validation
 
 # --- SERIALIZER FOR USER PROFILE ---
 class UserProfileSerializer(serializers.ModelSerializer):
+    # --- NEW: Define fields to build full URLs ---
+    resume_url = serializers.SerializerMethodField()
+    identification_url = serializers.SerializerMethodField()
+    payment_receipt_url = serializers.SerializerMethodField()
+
     class Meta:
         model = UserProfile
         # These are the fields from the "Membership Application" form
+        # and the new payment receipt field
         fields = [
             'age', 
             'education', 
             'occupation', 
             'reason_for_joining', 
             'resume', 
-            'identification'
+            'identification',
+            'payment_receipt', # <-- Add this field
+
+            # --- NEW: These are for downloading (read-only) ---
+            'resume_url',
+            'identification_url',
+            'payment_receipt_url',
         ]
+        # We add this so a user can't accidentally clear their application
+        extra_kwargs = {
+            'age': {'required': False},
+            'education': {'required': False},
+            'occupation': {'required': False},
+            'reason_for_joining': {'required': False},
+            'resume': {'write_only': True, 'required': False},
+            'identification': {'write_only': True, 'required': False},
+            'payment_receipt': {'write_only': True, 'required': False},
+        }
+
+    # --- NEW: Helper function to build a full URL ---
+    def get_full_url(self, file_field):
+        request = self.context.get('request')
+        if file_field and hasattr(file_field, 'url'):
+            return request.build_absolute_uri(file_field.url)
+        return None
+
+    # --- NEW: Functions to use the helper ---
+    def get_resume_url(self, obj):
+        return self.get_full_url(obj.resume)
+
+    def get_identification_url(self, obj):
+        return self.get_full_url(obj.identification)
+
+    def get_payment_receipt_url(self, obj):
+        return self.get_full_url(obj.payment_receipt)
 
 # --- SERIALIZER FOR CUSTOM LOGIN ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
