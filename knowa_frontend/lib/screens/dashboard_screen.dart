@@ -5,6 +5,7 @@ import 'package:knowa_frontend/services/event_service.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/event_detail_screen.dart';
+import 'package:knowa_frontend/screens/membership_application_screen.dart';
 import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -107,10 +108,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                _buildAnnouncementCard(
-                  title: 'Join KNOWA',
-                  text: 'Be Part of the Movement for Knowledge Empowerment!',
-                ),
+                // This new widget checks the user's status and shows the correct card
+                _buildApplicationStatusWidget(),
                 const SizedBox(height: 12),
                 _buildAnnouncementCard(
                   title: 'KNOWA EduTalks',
@@ -261,9 +260,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // --- WIDGET FOR ANNOUNCEMENT CARD ---
   Widget _buildAnnouncementCard({required String title, required String text}) {
+    // --- NEW: Check if this is the "Join" card ---
+    bool isJoinCard = title == 'Join KNOWA';
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell( // --- NEW: Wrap with InkWell ---
+        onTap: isJoinCard ? () {
+          // --- NEW: Navigation logic ---
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const MembershipApplicationScreen()),
+          );
+        } : null, // Disable tap for other cards
+        borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
@@ -291,6 +300,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -313,4 +323,85 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+
+  // This function checks the user's status and shows the correct card
+Widget _buildApplicationStatusWidget() {
+  // If user data hasn't loaded yet, show an empty box
+  if (_userData == null) {
+    return const SizedBox(height: 60); 
+  }
+
+  // Get the user's status
+  final String status = _userData?['member_status'] ?? 'PUBLIC';
+
+  switch (status) {
+    case 'PUBLIC':
+      // 1. If they are public, show the "Join KNOWA" button
+      return _buildAnnouncementCard(
+        title: 'Join KNOWA',
+        text: 'Be Part of the Movement for Knowledge Empowerment!',
+      );
+
+    case 'PENDING':
+      // 2. If they are pending, show a "Pending" status card
+      return _buildStatusCard(
+        title: 'Application Pending',
+        text: 'Your application is currently under review by our team.',
+        icon: Icons.hourglass_top_outlined,
+        color: Colors.orange,
+      );
+
+    case 'INTERVIEW':
+      // 3. If they are set for interview, show an "Interview" card
+      return _buildStatusCard(
+        title: 'Interview',
+        text: 'The admin team has requested an interview. Please check your email.',
+        icon: Icons.record_voice_over_outlined,
+        color: Colors.blue,
+      );
+
+    case 'REJECTED':
+      // 4. If they were rejected, show a "Rejected" card
+      return _buildStatusCard(
+        title: 'Application Status',
+        text: 'Your application was not approved at this time.',
+        icon: Icons.close,
+        color: Colors.red,
+      );
+
+    case 'MEMBER':
+      // 5. If they are a full member, show nothing.
+      return const SizedBox.shrink(); // Hides the card
+
+    default:
+      return const SizedBox.shrink();
+  }
+}
+
+// --- ADD THIS HELPER for the new status cards ---
+Widget _buildStatusCard({required String title, required String text, required IconData icon, required Color color}) {
+  return Card(
+    elevation: 2,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 40),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(text, style: TextStyle(color: Colors.grey[700])),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 }

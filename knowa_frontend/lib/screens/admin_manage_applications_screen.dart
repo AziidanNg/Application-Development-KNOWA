@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:knowa_frontend/models/pending_user.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:intl/intl.dart';
+import 'package:knowa_frontend/screens/applicant_profile_screen.dart';
 
 class AdminManageApplicationsScreen extends StatefulWidget {
   const AdminManageApplicationsScreen({super.key});
@@ -31,16 +32,15 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
   void _updateUser(int userId, String action) async {
     bool success = await _authService.updateUserStatus(userId, action.toUpperCase());
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('User $action' 'ed successfully'), backgroundColor: Colors.green),
-      );
-      _loadPendingUsers(); // Refresh the list
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update user status'), backgroundColor: Colors.red),
+    if (mounted) {
+       ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'User $action' 'ed successfully' : 'Failed to update user status'),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
       );
     }
+    _loadPendingUsers(); // Refresh the list
   }
 
   @override
@@ -88,15 +88,27 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(user.username, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              Text(user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                               Text('Applied $daysAgo days ago', style: const TextStyle(color: Colors.grey)),
                             ],
                           ),
                           const Spacer(),
                           IconButton(
                             icon: const Icon(Icons.arrow_forward_ios),
-                            onPressed: () {
-                              // TODO: Navigate to Applicant Profile (image 1)
+                            onPressed: () async {
+                              // --- UPDATE THIS ---
+                              final result = await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  // Pass the full user object to the new screen
+                                  builder: (context) => ApplicantProfileScreen(user: user),
+                                ),
+                              );
+
+                              // If the detail screen returns 'true', it means
+                              // an action was taken, so we should refresh this list.
+                              if (result == true) {
+                                _loadPendingUsers();
+                              }
                             },
                           )
                         ],

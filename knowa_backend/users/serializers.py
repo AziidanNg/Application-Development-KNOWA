@@ -1,10 +1,25 @@
 # users/serializers.py
 from rest_framework import serializers
 from .models import User
+from .models import UserProfile
 # Import the default token serializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.core.exceptions import ValidationError # For password validation
 import re # For password validation
+
+# --- SERIALIZER FOR USER PROFILE ---
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        # These are the fields from the "Membership Application" form
+        fields = [
+            'age', 
+            'education', 
+            'occupation', 
+            'reason_for_joining', 
+            'resume', 
+            'identification'
+        ]
 
 # --- SERIALIZER FOR CUSTOM LOGIN ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -72,16 +87,21 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         )
         return user
 
-# --- ADD THIS NEW SERIALIZER (THIS IS THE FIX) ---
-# This serializer is for Admins to view user details
+# --- REPLACE THE OLD AdminUserSerializer ---
 class AdminUserSerializer(serializers.ModelSerializer):
+    # This "nests" the UserProfile data inside the User data
+    profile = UserProfileSerializer(read_only=True)
+
     class Meta:
         model = User
-        # These are the fields the Admin will see
         fields = [
             'id', 
             'username', 
-            'email', 
+            'email',
+            'first_name', # The "Name" field
+            'phone',
+            'interests',
             'member_status', 
-            'date_joined'
+            'date_joined',
+            'profile' # <-- This contains all the new application data
         ]

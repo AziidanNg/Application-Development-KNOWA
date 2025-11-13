@@ -3,6 +3,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 import random
 from django.utils import timezone
 import datetime
@@ -71,3 +72,28 @@ class User(AbstractUser):
             self.save(update_fields=['tac_code', 'tac_expiry'])
             return True
         return False
+    
+    # This model holds all the extra application data
+class UserProfile(models.Model):
+    # Link this profile to a specific user
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='profile'
+    )
+
+    # --- Background Fields (from image_1b2dc9.png) ---
+    education = models.CharField(max_length=255, blank=True, null=True)
+    occupation = models.CharField(max_length=255, blank=True, null=True)
+    reason_for_joining = models.TextField(blank=True, null=True)
+
+    # --- New Fields You Requested ---
+    age = models.PositiveIntegerField(blank=True, null=True)
+
+    # --- Attached Files (from image_1b26a2.png) ---
+    # We need Pillow installed for this (which you already have)
+    resume = models.FileField(upload_to='resumes/', blank=True, null=True)
+    identification = models.FileField(upload_to='identifications/', blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s Profile"

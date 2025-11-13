@@ -2,8 +2,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics, permissions
-from .serializers import UserRegistrationSerializer, AdminUserSerializer
-from .models import User
+from .serializers import UserRegistrationSerializer, AdminUserSerializer, UserProfileSerializer
+from .models import User, UserProfile
 from django.contrib.auth import authenticate # For checking passwords
 from django.core.mail import send_mail
 from django.conf import settings
@@ -205,3 +205,24 @@ class PasswordResetConfirmView(APIView):
         else:
             # Token is invalid or expired
             return Response({'error': 'Invalid or expired TAC code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+# This view allows a user to submit their application
+class SubmitApplicationView(generics.UpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserProfileSerializer
+    queryset = UserProfile.objects.all()
+
+    def get_object(self):
+        # Users can only update their *own* profile
+        return self.request.user.profile
+
+    def perform_update(self, serializer):
+        # Save the profile data
+        serializer.save()
+
+        # --- THIS IS THE KEY ---
+        # After saving, change the user's status to PENDING
+        user = self.request.user
+        if user.member_status == User.MemberStatus.PUBLIC:
+            user.member_status = User.MemberStatus.PENDING
+            user.save()

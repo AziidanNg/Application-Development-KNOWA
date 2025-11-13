@@ -11,7 +11,9 @@ from .views import (
 
     # --- IMPORT THE NEW 2FA VIEWS ---
     LoginRequestTACView,
-    LoginVerifyTACView
+    LoginVerifyTACView,
+
+    SubmitApplicationView
 )
 # We no longer need the default TokenObtainPairView here
 
@@ -28,6 +30,9 @@ urlpatterns = [
     # --- Password Reset URLs ---
     path('password-reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+
+    # --- NEW: URL for submitting an application ---
+    path('apply/', SubmitApplicationView.as_view(), name='submit-application'),
 
     # --- ADMIN URLs ---
     path('admin/pending/', PendingUserListView.as_view(), name='pending-users'),

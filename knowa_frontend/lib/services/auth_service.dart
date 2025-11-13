@@ -4,6 +4,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:knowa_frontend/models/pending_user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
 
 class AuthService {
   // Use 10.0.2.2 for the Android emulator to connect to your PC's localhost
@@ -132,59 +136,6 @@ class AuthService {
     await prefs.remove('first_name');
   }
 
-  // --- ADMIN: GET PENDING USERS ---
-Future<List<PendingUser>> getPendingUsers() async {
-  final token = await _storage.read(key: 'access_token');
-  try {
-    final response = await http.get(
-      Uri.parse('${_baseUrl}admin/pending/'),
-      headers: {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token', // Send the admin's token
-      },
-    );
-
-    if (response.statusCode == 200) {
-      List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
-      return jsonList.map((json) => PendingUser.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load pending users.');
-    }
-  } catch (e) {
-    throw Exception('Connection failed: ${e.toString()}');
-  }
-}
-
-// --- ADMIN: UPDATE USER STATUS ---
-// This one function will handle approve, reject, and interview
-Future<bool> updateUserStatus(int userId, String action) async {
-  final token = await _storage.read(key: 'access_token');
-  String endpoint = '';
-
-  if (action == 'APPROVE') {
-    endpoint = 'admin/approve/$userId/';
-  } else if (action == 'REJECT') {
-    endpoint = 'admin/reject/$userId/';
-  } else if (action == 'INTERVIEW') {
-    endpoint = 'admin/interview/$userId/';
-  } else {
-    return false; // Invalid action
-  }
-
-  try {
-    final response = await http.post(
-      Uri.parse('$_baseUrl$endpoint'),
-      headers: {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token',
-      },
-    );
-    return response.statusCode == 200; // Return true if successful
-  } catch (e) {
-    return false;
-  }
-}
-
 // REQUESTING a password reset
 Future<Map<String, dynamic>> requestPasswordReset(String email) async {
   try {
@@ -220,6 +171,121 @@ Future<Map<String, dynamic>> confirmPasswordReset({
     return {'success': response.statusCode == 200, 'data': jsonDecode(response.body)};
   } catch (e) {
     return {'success': false, 'error': 'Connection failed.'};
+  }
+}
+
+// --- NEW FUNCTION for Submitting Application ---
+Future<Map<String, dynamic>> applyForMembership({
+  required String education,
+  required String occupation,
+  required String reason,
+  required String age,
+  File? resumeFile, // For resume.pdf
+  File? idFile,     // For ID.jpg
+}) async {
+
+  final token = await _storage.read(key: 'access_token');
+  var request = http.MultipartRequest(
+    'PUT', // We use PUT/PATCH to update an existing profile
+    Uri.parse('${_baseUrl}apply/'), // Calls your SubmitApplicationView
+  );
+
+  // Add all the text fields
+  request.fields['education'] = education;
+  request.fields['occupation'] = occupation;
+  request.fields['reason_for_joining'] = reason;
+  request.fields['age'] = age;
+
+  // --- Add the resume file (if it exists) ---
+  if (resumeFile != null) {
+    // Get MIME type (e.g., 'application/pdf')
+    final mimeType = lookupMimeType(resumeFile.path);
+    final mediaType = mimeType != null ? MediaType.parse(mimeType) : null;
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'resume', // Must match your Django 'resume' model field
+        resumeFile.path,
+        contentType: mediaType,
+      ),
+    );
+  }
+
+  // --- Add the ID file (if it exists) ---
+  if (idFile != null) {
+    final mimeType = lookupMimeType(idFile.path);
+    final mediaType = mimeType != null ? MediaType.parse(mimeType) : null;
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'identification', // Must match your Django 'identification' model field
+        idFile.path,
+        contentType: mediaType,
+      ),
+    );
+  }
+
+  // Add the authorization token
+  request.headers['Authorization'] = 'Bearer $token';
+
+  try {
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+    final responseData = jsonDecode(utf8.decode(response.bodyBytes));
+
+    if (response.statusCode == 200) { // 200 OK for an update
+      return {'success': true, 'data': responseData};
+    } else {
+      return {'success': false, 'error': responseData};
+    }
+  } catch (e) {
+    return {'success': false, 'error': 'Connection failed: ${e.toString()}'};
+  }
+}
+
+// --- ADMIN: GET PENDING USERS ---
+Future<List<PendingUser>> getPendingUsers() async {
+  final token = await _storage.read(key: 'access_token');
+  try {
+    final response = await http.get(
+      Uri.parse('${_baseUrl}admin/pending/'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token', // Send the admin's token
+      },
+    );
+
+    if (response.statusCode == 200) {
+      List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
+      return jsonList.map((json) => PendingUser.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load pending users.');
+    }
+  } catch (e) {
+    throw Exception('Connection failed: ${e.toString()}');
+  }
+}
+
+// --- ADMIN: UPDATE USER STATUS ---
+// This one function will handle approve, reject, and interview
+Future<bool> updateUserStatus(int userId, String action) async {
+  final token = await _storage.read(key: 'access_token');
+  String endpoint = '';
+
+  // action will be 'APPROVE', 'REJECT', or 'INTERVIEW'
+  endpoint = 'admin/${action.toLowerCase()}/$userId/';
+
+  try {
+    final response = await http.post(
+      Uri.parse('$_baseUrl$endpoint'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return response.statusCode == 200; // Return true if successful
+  } catch (e) {
+    return false;
   }
 }
 }
