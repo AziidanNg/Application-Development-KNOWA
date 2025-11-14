@@ -8,6 +8,8 @@ import 'package:knowa_frontend/screens/event_detail_screen.dart';
 import 'package:knowa_frontend/screens/membership_application_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:knowa_frontend/screens/payment_screen.dart';
+import 'package:knowa_frontend/services/donation_service.dart';
+import 'package:knowa_frontend/screens/donation_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -19,6 +21,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final EventService _eventService = EventService();
   final AuthService _authService = AuthService();
+  final DonationService _donationService = DonationService();
 
   // This will hold our user data
   Map<String, dynamic>? _userData;
@@ -26,11 +29,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // This will hold the events
   Future<List<Event>>? _eventsFuture;
 
+  late Future<Map<String, dynamic>> _donationGoalFuture;
+
   // We've moved the user loading to its own function
   @override
   void initState() {
     super.initState();
     _loadData();
+    _donationGoalFuture = _donationService.getDonationGoal();
   }
 
   // This function gets the user data first, then loads the events
@@ -100,7 +106,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                _buildDonationCard(), // Call the new helper widget
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _donationGoalFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      final goalData = snapshot.data!;
+                      return _buildDonationCard(goalData); // Pass data to the widget
+                    } else if (snapshot.hasError) {
+                      return Text('Error: ${snapshot.error}');
+                    }
+                    // By default, show a loading spinner.
+                    return const Center(child: CircularProgressIndicator());
+                  },
+                ),
 
                 // --- 2. Announcements Section ---
                 const SizedBox(height: 24),
@@ -221,7 +239,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildDonationCard() {
+  Widget _buildDonationCard(Map<String, dynamic> goalData) {
+    final double goal = (goalData['goal'] as num).toDouble();
+    final double current = (goalData['current_total'] as num).toDouble();
+    final double progress = (goal > 0) ? (current / goal) : 0.0;
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -233,20 +255,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Goal: RM10,000', style: TextStyle(fontWeight: FontWeight.bold)),
-                const Text('6000', style: TextStyle(color: Colors.grey)),
+                Text('Goal: RM${goal.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(current.toStringAsFixed(0), style: const TextStyle(color: Colors.grey)),
               ],
             ),
             const SizedBox(height: 8),
-            // This is the progress bar
             LinearProgressIndicator(
-              value: 0.6, // 6000 / 10000 = 0.6
+              value: progress, // Use real progress
               backgroundColor: Colors.grey[200],
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () { /* TODO: Navigate to Donation Page */ },
+              onPressed: () {
+                // Navigate to the full Donation Page
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const DonationPage()),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade700,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

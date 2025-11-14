@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     # My Apps (This is the most important fix)
     'users.apps.UsersConfig',
     'events',
+    'donations',
 
     # Default Django Apps
     'django.contrib.admin',
