@@ -17,7 +17,8 @@ from .views import (
     SubmitApplicationView,
     UploadReceiptView,
     PendingPaymentListView,
-    ConfirmPaymentView
+    ConfirmPaymentView,
+    AdminDashboardStatsView
 )
 # We no longer need the default TokenObtainPairView here
 
@@ -42,6 +43,7 @@ urlpatterns = [
     path('upload-receipt/', UploadReceiptView.as_view(), name='upload-receipt'),
 
     # --- ADMIN URLs ---
+    path('admin/stats/', AdminDashboardStatsView.as_view(), name='admin-stats'),
     path('admin/pending/', PendingUserListView.as_view(), name='pending-users'),
     path('admin/approve-member/<int:pk>/', ApproveForMembershipView.as_view(), name='approve-member'),
     path('admin/approve-volunteer/<int:pk>/', ApproveAsVolunteerView.as_view(), name='approve-volunteer'),

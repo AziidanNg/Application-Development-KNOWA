@@ -8,6 +8,10 @@ from django.contrib.auth import authenticate # For checking passwords
 from django.core.mail import send_mail
 from django.conf import settings
 from .serializers import MyTokenObtainPairSerializer # We'll use this to create the token
+from django.utils import timezone
+from django.db.models import Sum, Q
+from events.models import Event
+from donations.models import Donation
 
 #
 # --- This is your RegistrationView ---
@@ -295,3 +299,42 @@ class ConfirmPaymentView(APIView):
             return Response({'status': 'Payment confirmed. User is now a member.'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({'error': 'User not found or not awaiting payment.'}, status=status.HTTP_404_NOT_FOUND)
+        
+# This view calculates all the stats for the Admin Dashboard
+class AdminDashboardStatsView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request, format=None):
+        # 1. Total Members
+        total_members = User.objects.filter(
+            Q(member_status=User.MemberStatus.MEMBER) | Q(is_staff=True)
+        ).count()
+
+        # 2. Pending Applications
+        pending_applications = User.objects.filter(
+            member_status=User.MemberStatus.PENDING
+        ).count()
+
+        # 3. Active Events
+        active_events = Event.objects.filter(
+            status=Event.EventStatus.PUBLISHED,
+            end_time__gte=timezone.now() # "greater than or equal to now"
+        ).count()
+
+        # 4. Monthly Donations
+        current_month = timezone.now().month
+        current_year = timezone.now().year
+        monthly_donations = Donation.objects.filter(
+            status=Donation.DonationStatus.APPROVED,
+            submitted_at__year=current_year,
+            submitted_at__month=current_month
+        ).aggregate(Sum('amount'))['amount__sum'] or 0.00
+
+        # Create the data to send back
+        data = {
+            'total_members': total_members,
+            'pending_applications': pending_applications,
+            'active_events': active_events,
+            'monthly_donations': monthly_donations
+        }
+        return Response(data, status=status.HTTP_200_OK)

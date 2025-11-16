@@ -102,6 +102,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     SizedBox(height: 16),
                     // You could also add an Image.asset('assets/qr_code.png') here
                     Text('Or scan the QR code (placeholder)'),
+                    
                   ],
                 ),
               ),
