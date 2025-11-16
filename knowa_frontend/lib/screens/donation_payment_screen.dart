@@ -94,18 +94,31 @@ class _DonationPaymentScreenState extends State<DonationPaymentScreen> {
             Card(
               elevation: 0,
               color: Colors.grey[100],
-              child: const Padding(
-                padding: EdgeInsets.all(16.0),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('NGO BANK ACCOUNT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    SizedBox(height: 8),
-                    Text('Bank Name: Maybank'),
-                    Text('Account Name: KNOWA NGO'),
-                    Text('Account Number: 1234 5678 9012'),
-                    SizedBox(height: 16),
-                    Text('Or scan the QR code (placeholder)'),
+                    const Text('NGO BANK ACCOUNT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    const Text('Bank Name: Maybank'),
+                    const Text('Account Name: KNOWA NGO'),
+                    const Text('Account Number: 1234 5678 9012'),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Or scan the QR code below:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                    // --- THIS IS YOUR IMAGE ---
+                    Image.asset(
+                      'assets/images/knowa_qr_testing.png', // <-- Make sure this filename matches yours
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
+                    // --------------------------
                   ],
                 ),
               ),

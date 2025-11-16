@@ -6,6 +6,7 @@ import 'package:knowa_frontend/screens/events_screen.dart';
 import 'package:knowa_frontend/screens/calendar_screen.dart';
 import 'package:knowa_frontend/screens/chatbot_screen.dart';
 import 'package:knowa_frontend/screens/profile_screen.dart';
+import 'package:knowa_frontend/screens/chat_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   // --- 1. ADD THIS ---
@@ -22,29 +23,51 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0; 
 
-  // --- 2. MAKE THE SCREEN LIST DYNAMIC ---
+  // --- 1. DECLARE THE LISTS (THEY ARE NO LONGER STATIC) ---
   late final List<Widget> _screens;
+  late final List<BottomNavigationBarItem> _navBarItems;
 
   @override
   void initState() {
     super.initState();
 
-    // --- 3. BUILD THE SCREEN LIST BASED ON ROLE ---
-    // Get the user's role from the "widget" (passed from the login screen)
+    // Get the user's role from the "widget"
     final bool isStaff = widget.userData['is_staff'] ?? false;
 
-    _screens = <Widget>[
-      // --- THIS IS THE FIX ---
-      // If the user is staff, show AdminDashboard, otherwise show public Dashboard
-      isStaff ? const AdminDashboardScreen() : const DashboardScreen(),
-      // -----------------------
-
-      const EventsScreen(),
-      const CalendarScreen(),
-      const ChatbotScreen(),
-      const ProfileScreen(),
-    ];
-    // ---------------------------------
+    // --- 2. DYNAMICALLY BUILD THE LISTS ---
+    if (isStaff) {
+      // --- ADMIN TABS ---
+      _screens = const [
+        AdminDashboardScreen(),
+        EventsScreen(),
+        CalendarScreen(),
+        ChatScreen(), // <-- Admin "Chat"
+        ProfileScreen(),
+      ];
+      _navBarItems = const [
+        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+        BottomNavigationBarItem(icon: Icon(Icons.event_outlined), activeIcon: Icon(Icons.event), label: 'Events'),
+        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), activeIcon: Icon(Icons.calendar_today), label: 'Calendar'),
+        BottomNavigationBarItem(icon: Icon(Icons.chat_outlined), activeIcon: Icon(Icons.chat), label: 'Chat'), // <-- Admin "Chat"
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+      ];
+    } else {
+      // --- PUBLIC/MEMBER TABS ---
+      _screens = const [
+        DashboardScreen(),
+        EventsScreen(),
+        CalendarScreen(),
+        ChatbotScreen(), // <-- Public "Chatbot"
+        ProfileScreen(),
+      ];
+      _navBarItems = const [
+        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+        BottomNavigationBarItem(icon: Icon(Icons.event_outlined), activeIcon: Icon(Icons.event), label: 'Events'),
+        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), activeIcon: Icon(Icons.calendar_today), label: 'Calendar'),
+        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Chatbot'), // <-- Public "Chatbot"
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+      ];
+    }
   }
 
   void _onItemTapped(int index) {
@@ -58,33 +81,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return Scaffold(
       body: _screens.elementAt(_selectedIndex), // Show the selected screen
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event_outlined),
-            activeIcon: Icon(Icons.event),
-            label: 'Events',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today_outlined),
-            activeIcon: Icon(Icons.calendar_today),
-            label: 'Calendar',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
-            label: 'Chatbot',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+        items: _navBarItems, // <-- 3. USE THE DYNAMIC LIST
+
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
 

@@ -400,8 +400,22 @@ Widget _buildApplicationStatusWidget() {
       );
 
     case 'MEMBER':
-      // 5. If they are a full member, show nothing.
-      return const SizedBox.shrink(); // Hides the card
+      // Show a "Welcome" card for full members
+      return _buildStatusCard(
+        title: 'Welcome, NGO Member!',
+        text: 'You now have full access to member features.',
+        icon: Icons.check_circle_outline,
+        color: Colors.green,
+      );
+
+    case 'VOLUNTEER':
+      // Show a "Welcome" card for volunteers
+      return _buildStatusCard(
+        title: 'Welcome, Volunteer!',
+        text: 'You are now registered as a project-based volunteer.',
+        icon: Icons.check_circle_outline,
+        color: Colors.green,
+      );
 
     default:
       return const SizedBox.shrink();
