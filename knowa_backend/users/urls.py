@@ -3,7 +3,8 @@ from django.urls import path
 from .views import (
     RegistrationView, 
     PendingUserListView,
-    ApproveUserView,
+    ApproveForMembershipView,
+    ApproveAsVolunteerView,
     RejectUserView,
     InterviewUserView,
     PasswordResetRequestView,
@@ -42,7 +43,8 @@ urlpatterns = [
 
     # --- ADMIN URLs ---
     path('admin/pending/', PendingUserListView.as_view(), name='pending-users'),
-    path('admin/approve/<int:pk>/', ApproveUserView.as_view(), name='approve-user'),
+    path('admin/approve-member/<int:pk>/', ApproveForMembershipView.as_view(), name='approve-member'),
+    path('admin/approve-volunteer/<int:pk>/', ApproveAsVolunteerView.as_view(), name='approve-volunteer'),
     path('admin/reject/<int:pk>/', RejectUserView.as_view(), name='reject-user'),
     path('admin/interview/<int:pk>/', InterviewUserView.as_view(), name='interview-user'),
 

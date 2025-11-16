@@ -19,6 +19,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         # These are the fields from the "Membership Application" form
         # and the new payment receipt field
         fields = [
+            'application_type',
             'age', 
             'education', 
             'occupation', 
@@ -41,6 +42,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'resume': {'write_only': True, 'required': False},
             'identification': {'write_only': True, 'required': False},
             'payment_receipt': {'write_only': True, 'required': False},
+            'application_type': {'required': False},
         }
 
     # --- NEW: Helper function to build a full URL ---
@@ -131,6 +133,8 @@ class AdminUserSerializer(serializers.ModelSerializer):
     # This "nests" the UserProfile data inside the User data
     profile = UserProfileSerializer(read_only=True)
 
+    application_type_display = serializers.CharField(source='profile.get_application_type_display', read_only=True)
+
     class Meta:
         model = User
         fields = [
@@ -142,5 +146,6 @@ class AdminUserSerializer(serializers.ModelSerializer):
             'interests',
             'member_status', 
             'date_joined',
-            'profile' # <-- This contains all the new application data
+            'profile',
+            'application_type_display',# <-- This contains all the new application data
         ]

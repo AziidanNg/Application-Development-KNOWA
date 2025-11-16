@@ -16,6 +16,7 @@ class User(AbstractUser):
         PENDING = 'PENDING', 'Pending Member'
         INTERVIEW = 'INTERVIEW', 'Interview'  # <-- for interview option
         APPROVED_UNPAID = 'APPROVED_UNPAID', 'Approved (Unpaid)'
+        VOLUNTEER = 'VOLUNTEER', 'Volunteer'
         MEMBER = 'MEMBER', 'NGO Member'
         REJECTED = 'REJECTED', 'Rejected'
     
@@ -81,6 +82,19 @@ class UserProfile(models.Model):
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         related_name='profile'
+    )
+
+    # --- ADD THESE NEW CHOICES ---
+    class ApplicationType(models.TextChoices):
+        VOLUNTEER = 'VOLUNTEER', 'Project-Based Volunteer'
+        MEMBERSHIP = 'MEMBERSHIP', 'Full Membership'
+
+    # --- ADD THIS NEW FIELD ---
+    # This stores the user's choice from the application form
+    application_type = models.CharField(
+        max_length=20,
+        choices=ApplicationType.choices,
+        blank=True, null=True # Allows it to be blank until they apply
     )
 
     # --- Background Fields (from image_1b2dc9.png) ---

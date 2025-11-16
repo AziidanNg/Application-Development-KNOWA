@@ -11,6 +11,7 @@ class UserProfile {
   final String? resumeUrl;
   final String? idUrl;
   final String? paymentReceiptUrl; // <-- 1. ADD THIS
+  final String applicationType;
 
   UserProfile({
     required this.education,
@@ -20,6 +21,7 @@ class UserProfile {
     this.resumeUrl,
     this.idUrl,
     this.paymentReceiptUrl, // <-- 2. ADD THIS
+    required this.applicationType,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -39,6 +41,7 @@ class UserProfile {
       resumeUrl: json['resume_url'], // <-- Use new field
       idUrl: json['identification_url'], // <-- Use new field
       paymentReceiptUrl: json['payment_receipt_url'], // <-- Use new field
+      applicationType: json['application_type'] ?? 'MEMBERSHIP',
     );
   }
 }

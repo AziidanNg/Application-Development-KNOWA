@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/admin_dashboard_screen.dart';
 import 'package:knowa_frontend/screens/dashboard_screen.dart';
+import 'package:knowa_frontend/screens/main_navigation_screen.dart';
+
 
 class Verify2FAScreen extends StatefulWidget {
   // We must pass in the email/username from the login screen
@@ -33,18 +35,11 @@ class _Verify2FAScreenState extends State<Verify2FAScreen> {
       if (!mounted) return;
 
       if (userData != null) {
-        // SUCCESS! Navigate to the correct dashboard
-        if (userData['is_staff'] == true) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-            (route) => false,
-          );
-        } else {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const DashboardScreen()),
-            (route) => false,
-          );
-        }
+      // SUCCESS! Navigate to the main app shell.
+      // Both Admins and Public Users go to the SAME navigation screen.
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => MainNavigationScreen(userData: userData)),
+      );
       } else {
         // TAC was invalid or expired
         ScaffoldMessenger.of(context).showSnackBar(

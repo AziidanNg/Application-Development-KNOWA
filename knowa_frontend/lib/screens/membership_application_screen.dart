@@ -25,6 +25,7 @@ class _MembershipApplicationScreenState extends State<MembershipApplicationScree
   File? _resumeFile;
   File? _idFile;
   bool _isLoading = false;
+  String _applicationType = 'MEMBERSHIP';
 
   // Function to pick a file
   Future<File?> _pickFile() async {
@@ -45,6 +46,7 @@ class _MembershipApplicationScreenState extends State<MembershipApplicationScree
     setState(() { _isLoading = true; });
 
     final result = await _authService.applyForMembership(
+      applicationType: _applicationType,
       education: _educationController.text,
       occupation: _occupationController.text,
       reason: _reasonController.text,
@@ -87,6 +89,35 @@ class _MembershipApplicationScreenState extends State<MembershipApplicationScree
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text('I want to apply for:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _applicationType,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'MEMBERSHIP',
+                    child: Text('Full Membership (with fee)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'VOLUNTEER',
+                    child: Text('Project-Based Volunteer'),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _applicationType = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
               _buildTextField(
                 controller: _ageController,
                 label: 'Age',

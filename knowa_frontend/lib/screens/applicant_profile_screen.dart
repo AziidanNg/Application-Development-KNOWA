@@ -20,7 +20,16 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
   void _updateUser(String action) async {
     setState(() { _isLoading = true; });
 
-    bool success = await _authService.updateUserStatus(widget.user.id, action.toUpperCase());
+    String finalAction = action;
+
+    // If the action is 'Approve', figure out which kind
+    if (action == 'Approve') {
+      finalAction = widget.user.profile.applicationType == 'MEMBERSHIP' 
+          ? 'APPROVE_MEMBER' 
+          : 'APPROVE_VOLUNTEER';
+    }
+
+    bool success = await _authService.updateUserStatus(widget.user.id, finalAction);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -29,8 +38,7 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
-      // Pop back to the list screen, sending 'true' to signal a refresh
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(true); // Go back to the list
     }
   }
 
@@ -75,6 +83,12 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
             _buildInfoRow('Email', user.email),
             _buildInfoRow('Phone', user.phone),
             _buildInfoRow('Role', user.memberStatus), // This will say "PENDING"
+            _buildInfoRow(
+              'Applying for', 
+              user.profile.applicationType == 'MEMBERSHIP' 
+                ? 'Full Membership' 
+                : 'Project-Based Volunteer'
+            ),
 
             const SizedBox(height: 32),
             const Text(
@@ -105,7 +119,9 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildActionButton(
-              text: 'Approve',
+              text: widget.user.profile.applicationType == 'MEMBERSHIP' 
+                ? 'Approve for Payment' 
+                : 'Approve Volunteer',
               color: Colors.blue.shade700,
               onPressed: _isLoading ? null : () => _updateUser('Approve'),
             ),

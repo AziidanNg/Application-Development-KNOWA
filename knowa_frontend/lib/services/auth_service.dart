@@ -176,6 +176,7 @@ Future<Map<String, dynamic>> confirmPasswordReset({
 
 // --- NEW FUNCTION for Submitting Application ---
 Future<Map<String, dynamic>> applyForMembership({
+  required String applicationType,
   required String education,
   required String occupation,
   required String reason,
@@ -191,6 +192,7 @@ Future<Map<String, dynamic>> applyForMembership({
   );
 
   // Add all the text fields
+  request.fields['application_type'] = applicationType; 
   request.fields['education'] = education;
   request.fields['occupation'] = occupation;
   request.fields['reason_for_joining'] = reason;
@@ -268,12 +270,24 @@ Future<List<PendingUser>> getPendingUsers() async {
 
 // --- ADMIN: UPDATE USER STATUS ---
 // This one function will handle approve, reject, and interview
+// It now accepts 'APPROVE_MEMBER' and 'APPROVE_VOLUNTEER'
 Future<bool> updateUserStatus(int userId, String action) async {
   final token = await _storage.read(key: 'access_token');
   String endpoint = '';
 
-  // action will be 'APPROVE', 'REJECT', or 'INTERVIEW'
-  endpoint = 'admin/${action.toLowerCase()}/$userId/';
+  // --- NEW LOGIC ---
+  if (action == 'APPROVE_MEMBER') {
+    endpoint = 'admin/approve-member/$userId/';
+  } else if (action == 'APPROVE_VOLUNTEER') {
+    endpoint = 'admin/approve-volunteer/$userId/';
+  } else if (action == 'REJECT') {
+    endpoint = 'admin/reject/$userId/';
+  } else if (action == 'INTERVIEW') {
+    endpoint = 'admin/interview/$userId/';
+  } else {
+    return false; // Invalid action
+  }
+  // --- END NEW LOGIC ---
 
   try {
     final response = await http.post(

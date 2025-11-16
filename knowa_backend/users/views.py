@@ -51,19 +51,34 @@ class PendingUserListView(generics.ListAPIView):
         return {'request': self.request}
 
 # 2. View to APPROVE a user
-class ApproveUserView(APIView):
+class ApproveForMembershipView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request, pk, format=None):
         try:
-            # You can approve a user who is PENDING or in INTERVIEW
             user = User.objects.get(
                 pk=pk, 
                 member_status__in=[User.MemberStatus.PENDING, User.MemberStatus.INTERVIEW]
             )
-            user.member_status = User.MemberStatus.APPROVED_UNPAID # Change status to MEMBER
+            user.member_status = User.MemberStatus.APPROVED_UNPAID # This flow is correct
             user.save()
-            return Response({'status': 'User approved'}, status=status.HTTP_200_OK)
+            return Response({'status': 'User approved, awaiting payment.'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found or not pending/interview'}, status=status.HTTP_404_NOT_FOUND)
+        
+class ApproveAsVolunteerView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, pk, format=None):
+        try:
+            user = User.objects.get(
+                pk=pk, 
+                member_status__in=[User.MemberStatus.PENDING, User.MemberStatus.INTERVIEW]
+            )
+            # This is the new flow: directly to Volunteer
+            user.member_status = User.MemberStatus.VOLUNTEER 
+            user.save()
+            return Response({'status': 'User approved as Volunteer.'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({'error': 'User not found or not pending/interview'}, status=status.HTTP_404_NOT_FOUND)
 

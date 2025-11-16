@@ -29,8 +29,17 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
     });
   }
 
-  void _updateUser(int userId, String action) async {
-    bool success = await _authService.updateUserStatus(userId, action.toUpperCase());
+  void _updateUser(int userId, String action, String applicationType) async {
+    String finalAction = action;
+
+    // If the action is 'Approve', figure out which kind
+    if (action == 'Approve') {
+      finalAction = applicationType == 'MEMBERSHIP' 
+          ? 'APPROVE_MEMBER' 
+          : 'APPROVE_VOLUNTEER';
+    }
+
+    bool success = await _authService.updateUserStatus(userId, finalAction);
 
     if (mounted) {
        ScaffoldMessenger.of(context).showSnackBar(
@@ -89,6 +98,12 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              Text(
+                                user.profile.applicationType == 'MEMBERSHIP' 
+                                  ? 'Applied for: Membership' 
+                                  : 'Applied for: Volunteer',
+                                style: const TextStyle(color: Colors.blue, fontSize: 12),
+                              ),
                               Text('Applied $daysAgo days ago', style: const TextStyle(color: Colors.grey)),
                             ],
                           ),
@@ -120,19 +135,22 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                           _buildActionButton(
                             text: 'Approve',
                             color: Colors.blue.shade700,
-                            onPressed: () => _updateUser(user.id, 'Approve'),
+                            // --- UPDATE THIS ---
+                            onPressed: () => _updateUser(user.id, 'Approve', user.profile.applicationType),
                           ),
                           _buildActionButton(
                             text: 'Reject',
                             color: Colors.red,
-                            onPressed: () => _updateUser(user.id, 'Reject'),
+                            // --- UPDATE THIS ---
+                            onPressed: () => _updateUser(user.id, 'Reject', user.profile.applicationType),
                           ),
                           _buildActionButton(
                             text: 'Interview',
                             color: Colors.white,
                             textColor: Colors.blue.shade700,
                             borderColor: Colors.blue.shade700,
-                            onPressed: () => _updateUser(user.id, 'Interview'),
+                            // --- UPDATE THIS ---
+                            onPressed: () => _updateUser(user.id, 'Interview', user.profile.applicationType),
                           ),
                         ],
                       )
