@@ -3,38 +3,57 @@ import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/admin_manage_applications_screen.dart';
-import 'package:knowa_frontend/screens/admin_manage_events_screen.dart';
 import 'package:knowa_frontend/screens/admin_pending_payments_screen.dart';
 import 'package:knowa_frontend/screens/admin_pending_donations_screen.dart';
+import 'package:knowa_frontend/screens/admin_manage_events_screen.dart';
+import 'package:knowa_frontend/models/admin_stats.dart'; // <-- 1. IMPORT YOUR NEW MODEL
+import 'package:intl/intl.dart'; // For formatting the currency
 
-class AdminDashboardScreen extends StatelessWidget {
+// --- 2. CONVERT TO STATEFULWIDGET ---
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
-  void _handleLogout(BuildContext context) async {
-    final authService = AuthService();
-    await authService.logout();
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
 
-    // Go back to Login Screen and remove all other screens from history
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+
+  // --- 3. ADD SERVICE AND FUTURE ---
+  final AuthService _authService = AuthService();
+  late Future<AdminStats> _statsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load the stats when the screen is first built
+    _statsFuture = _authService.getAdminStats();
+  }
+
+  void _handleLogout(BuildContext context) async {
+    await _authService.logout();
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (Route<dynamic> route) => false, // This clears the stack
+        (Route<dynamic> route) => false,
       );
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
+    // Formatter for RM 5,500
+    final currencyFormatter = NumberFormat.currency(locale: 'en_MY', symbol: 'RM');
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
         backgroundColor: Colors.white,
         elevation: 0,
-        //Logout
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black),
-            onPressed: () => _handleLogout(context), // Call the logout function
+            onPressed: () => _handleLogout(context),
           ),
         ],
       ),
@@ -50,36 +69,77 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // 2x2 Stats Grid
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              children: [
-                _buildStatCard('Total Members', '1,250', '+10%', Colors.green),
-                _buildStatCard('Pending Applications', '15', '-5%', Colors.red),
-                _buildStatCard('Active Events', '8', '+20%', Colors.green),
-                _buildStatCard('Monthly Donations', '\$5,500', '+15%', Colors.green),
-              ],
+            // --- 4. USE A FUTUREBUILDER TO WRAP THE STATS ---
+            FutureBuilder<AdminStats>(
+              future: _statsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  // Show a loading state for all 4 cards
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error loading stats: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: Text('No stats found.'));
+                }
+
+                // We have data!
+                final stats = snapshot.data!;
+
+                // --- 5. BUILD THE GRID WITH REAL DATA ---
+                return GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  children: [
+                    _buildStatCard(
+                      'Total Members', 
+                      stats.totalMembers.toString(), 
+                      '+10%', // (We'll make this dynamic later)
+                      Colors.green
+                    ),
+                    _buildStatCard(
+                      'Pending Applications', 
+                      stats.pendingApplications.toString(), 
+                      '-5%', // (Placeholder)
+                      Colors.red
+                    ),
+                    _buildStatCard(
+                      'Active Events', 
+                      stats.activeEvents.toString(), 
+                      '+20%', // (Placeholder)
+                      Colors.green
+                    ),
+                    _buildStatCard(
+                      'Monthly Donations', 
+                      currencyFormatter.format(stats.monthlyDonations), // Use the formatter
+                      '+15%', // (Placeholder)
+                      Colors.green
+                    ),
+                  ],
+                );
+              },
             ),
 
             const SizedBox(height: 32),
-
-            // Quick Actions
             const Text(
               'Quick Actions',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
+
+            // ... (Rest of your quick action buttons) ...
             _buildActionButton(
               title: 'Member Applications',
-              onPressed: () { Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => const AdminManageApplicationsScreen(),
-                                ),
-                              ); 
+              onPressed: () { 
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AdminManageApplicationsScreen(),
+                  ),
+                );
               },
               isPrimary: true,
             ),
@@ -116,20 +176,9 @@ class AdminDashboardScreen extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 12),
-            _buildActionButton(
-              title: 'Create Announcement',
-              onPressed: () { /* TODO: Navigate to create announcement */ },
-            ),
-            const SizedBox(height: 12),
-            _buildActionButton(
-              title: 'Schedule Meeting',
-              onPressed: () { /* TODO: Navigate to schedule meeting */ },
-            ),
           ],
         ),
       ),
-      // TODO: We will build the new Admin Bottom Nav Bar later
     );
   }
 

@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:knowa_frontend/models/admin_stats.dart';
 
 class AuthService {
   // Use 10.0.2.2 for the Android emulator to connect to your PC's localhost
@@ -101,6 +102,7 @@ class AuthService {
         await prefs.setString('member_status', userData['member_status']);
         await prefs.setBool('is_staff', userData['is_staff']);
         await prefs.setString('first_name', userData['first_name']);
+        await prefs.setString('phone', userData['phone']);
 
         return userData; // Return the user data to navigate to the correct dashboard
       } else {
@@ -120,6 +122,7 @@ class AuthService {
       'member_status': prefs.getString('member_status') ?? 'PUBLIC',
       'is_staff': prefs.getBool('is_staff') ?? false,
       'first_name': prefs.getString('first_name') ?? prefs.getString('username') ?? 'User',
+      'phone': prefs.getString('phone') ?? 'N/A',
     };
   }
 
@@ -134,6 +137,7 @@ class AuthService {
     await prefs.remove('member_status');
     await prefs.remove('is_staff');
     await prefs.remove('first_name');
+    await prefs.remove('phone');
   }
 
 // REQUESTING a password reset
@@ -374,6 +378,27 @@ Future<bool> confirmPayment(int userId) async {
     return response.statusCode == 200; // Return true if successful
   } catch (e) {
     return false;
+  }
+}
+
+Future<AdminStats> getAdminStats() async {
+  final token = await _storage.read(key: 'access_token');
+  try {
+    final response = await http.get(
+      Uri.parse('${_baseUrl}admin/stats/'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return AdminStats.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+    } else {
+      throw Exception('Failed to load admin stats.');
+    }
+  } catch (e) {
+    throw Exception('Connection failed: ${e.toString()}');
   }
 }
 }

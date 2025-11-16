@@ -89,7 +89,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             Card(
               elevation: 0,
               color: Colors.grey[100],
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,8 +101,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     Text('Account Number: 1234 5678 9012'),
                     SizedBox(height: 16),
                     // You could also add an Image.asset('assets/qr_code.png') here
-                    Text('Or scan the QR code (placeholder)'),
-                    
+                    const Text(
+                      'Or scan the QR code below:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                    Image.asset(
+                      'assets/images/knowa_qr_testing.png', // <-- Make sure this filename matches yours
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
                   ],
                 ),
               ),
