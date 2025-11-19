@@ -242,6 +242,8 @@ Future<Map<String, dynamic>> applyForMembership({
     final responseData = jsonDecode(utf8.decode(response.bodyBytes));
 
     if (response.statusCode == 200) { // 200 OK for an update
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('member_status', 'PENDING');
       return {'success': true, 'data': responseData};
     } else {
       return {'success': false, 'error': responseData};

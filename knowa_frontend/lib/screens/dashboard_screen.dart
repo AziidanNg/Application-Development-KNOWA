@@ -377,11 +377,25 @@ Widget _buildApplicationStatusWidget() {
           }
 
     case 'PUBLIC':
-      // 1. If they are public, show the "Join KNOWA" button
-      return _buildAnnouncementCard(
-        title: 'Join KNOWA',
-        text: 'Be Part of the Movement for Knowledge Empowerment!',
-      );
+        // "Join KNOWA" card
+        return InkWell(
+          onTap: () async {
+            // --- WAIT FOR THE RESULT ---
+            final result = await Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const MembershipApplicationScreen()),
+            );
+
+            // --- IF SUCCESS (TRUE), RELOAD DATA ---
+            if (result == true) {
+              _loadData(); // This refreshes the screen instantly!
+            }
+            // --------------------------------------
+          },
+          child: _buildAnnouncementCard(
+            title: 'Join KNOWA',
+            text: 'Be Part of the Movement for Knowledge Empowerment!',
+          ),
+        );
 
     case 'PENDING':
       // 2. If they are pending, show a "Pending" status card

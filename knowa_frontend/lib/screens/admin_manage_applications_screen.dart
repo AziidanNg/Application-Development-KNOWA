@@ -32,24 +32,39 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
   void _updateUser(int userId, String action, String applicationType) async {
     String finalAction = action;
 
-    // If the action is 'Approve', figure out which kind
+    // 1. Handle Approval (Member vs Volunteer)
     if (action == 'Approve') {
       finalAction = applicationType == 'MEMBERSHIP' 
           ? 'APPROVE_MEMBER' 
           : 'APPROVE_VOLUNTEER';
     }
+    
+    // 2. Handle Rejection (This is the critical part)
+    else if (action == 'Reject') {
+      finalAction = 'REJECT'; // This must match your AuthService logic
+    }
+    
+    // 3. Handle Interview
+    else if (action == 'Interview') {
+      finalAction = 'INTERVIEW';
+    }
 
+    // 4. Call the API
     bool success = await _authService.updateUserStatus(userId, finalAction);
-
+    
     if (mounted) {
        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? 'User $action' 'ed successfully' : 'Failed to update user status'),
+          content: Text(success ? 'User updated successfully' : 'Failed to update user status'),
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
     }
-    _loadPendingUsers(); // Refresh the list
+    
+    // 5. REFRESH THE LIST
+    if (success) {
+      _loadPendingUsers(); 
+    }
   }
 
   @override

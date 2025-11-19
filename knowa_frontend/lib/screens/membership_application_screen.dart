@@ -65,7 +65,7 @@ class _MembershipApplicationScreenState extends State<MembershipApplicationScree
           backgroundColor: Colors.green,
         ),
       );
-      Navigator.of(context).pop(); // Go back to the dashboard
+      Navigator.of(context).pop(true); // Go back to the dashboard
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
