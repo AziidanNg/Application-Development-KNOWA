@@ -363,7 +363,18 @@ Widget _buildApplicationStatusWidget() {
 
   switch (status) {
     case 'APPROVED_UNPAID':
-      return _buildPaymentCard(); // Show the "Pay Fee" card
+      bool hasReceipt = _userData?['has_receipt'] ?? false;
+
+          if (hasReceipt) {
+            return _buildStatusCard(
+              title: 'Payment Verification Pending',
+              text: 'We have received your receipt. An admin will verify it shortly.',
+              icon: Icons.receipt_long,
+              color: Colors.blue,
+            );
+          } else {
+            return _buildPaymentCard(); // Show "Pay Fee" only if no receipt
+          }
 
     case 'PUBLIC':
       // 1. If they are public, show the "Join KNOWA" button

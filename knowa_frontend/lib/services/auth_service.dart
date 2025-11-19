@@ -103,6 +103,7 @@ class AuthService {
         await prefs.setBool('is_staff', userData['is_staff']);
         await prefs.setString('first_name', userData['first_name']);
         await prefs.setString('phone', userData['phone']);
+        await prefs.setBool('has_receipt', userData['has_receipt'] ?? false);
 
         return userData; // Return the user data to navigate to the correct dashboard
       } else {
@@ -123,6 +124,7 @@ class AuthService {
       'is_staff': prefs.getBool('is_staff') ?? false,
       'first_name': prefs.getString('first_name') ?? prefs.getString('username') ?? 'User',
       'phone': prefs.getString('phone') ?? 'N/A',
+      'has_receipt': prefs.getBool('has_receipt') ?? false,
     };
   }
 
@@ -333,7 +335,8 @@ Future<bool> uploadReceipt(File receiptFile) async {
   try {
     var streamedResponse = await request.send();
     var response = await http.Response.fromStream(streamedResponse);
-
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_receipt', true);
     return response.statusCode == 200; // 200 OK for an update
   } catch (e) {
     return false;

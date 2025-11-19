@@ -74,6 +74,12 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['is_staff'] = user.is_staff
         token['first_name'] = user.first_name
         token['phone'] = user.phone
+        # Check if the user has a profile and a receipt file
+        has_receipt = False
+        if hasattr(user, 'profile') and user.profile.payment_receipt:
+            has_receipt = True
+
+        token['has_receipt'] = has_receipt
 
         return token
 
