@@ -384,6 +384,23 @@ Future<bool> confirmPayment(int userId) async {
   }
 }
 
+// --- ADMIN: REJECT A PAYMENT ---
+Future<bool> rejectPayment(int userId) async {
+  final token = await _storage.read(key: 'access_token');
+  try {
+    final response = await http.post(
+      Uri.parse('${_baseUrl}admin/reject-payment/$userId/'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return response.statusCode == 200;
+  } catch (e) {
+    return false;
+  }
+}
+
 Future<AdminStats> getAdminStats() async {
   final token = await _storage.read(key: 'access_token');
   try {

@@ -300,6 +300,22 @@ class ConfirmPaymentView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User not found or not awaiting payment.'}, status=status.HTTP_404_NOT_FOUND)
         
+class RejectPaymentView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, pk, format=None):
+        try:
+            user = User.objects.get(
+                pk=pk, 
+                member_status=User.MemberStatus.APPROVED_UNPAID
+            )
+            # We change status to REJECTED so they are removed from the list
+            user.member_status = User.MemberStatus.REJECTED 
+            user.save()
+            return Response({'status': 'Payment rejected. User application rejected.'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found or not awaiting payment.'}, status=status.HTTP_404_NOT_FOUND)
+        
 # This view calculates all the stats for the Admin Dashboard
 class AdminDashboardStatsView(APIView):
     permission_classes = [permissions.IsAdminUser]

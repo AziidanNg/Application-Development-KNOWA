@@ -37,9 +37,12 @@ class _Verify2FAScreenState extends State<Verify2FAScreen> {
       if (userData != null) {
       // SUCCESS! Navigate to the main app shell.
       // Both Admins and Public Users go to the SAME navigation screen.
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => MainNavigationScreen(userData: userData)),
-      );
+      Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => MainNavigationScreen(userData: userData),
+          ),
+          (Route<dynamic> route) => false, // 'false' means "remove all previous routes"
+        );
       } else {
         // TAC was invalid or expired
         ScaffoldMessenger.of(context).showSnackBar(

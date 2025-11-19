@@ -62,6 +62,20 @@ class _AdminPendingPaymentsScreenState extends State<AdminPendingPaymentsScreen>
     _loadPendingPayments(); // Refresh the list
   }
 
+  void _rejectPayment(int userId) async {
+    bool success = await _authService.rejectPayment(userId);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Payment rejected.' : 'Failed to reject payment.'),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
+    }
+    _loadPendingPayments(); // Refresh the list
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -116,6 +130,12 @@ class _AdminPendingPaymentsScreenState extends State<AdminPendingPaymentsScreen>
                           _confirmPayment(user.id);
                         },
                         tooltip: 'Confirm Payment',
+                      ),
+                      // 3. REJECT (New Button)
+                      IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.red),
+                        onPressed: () => _rejectPayment(user.id),
+                        tooltip: 'Reject Payment',
                       ),
                     ],
                   ),

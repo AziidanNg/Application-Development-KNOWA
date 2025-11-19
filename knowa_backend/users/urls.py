@@ -18,7 +18,8 @@ from .views import (
     UploadReceiptView,
     PendingPaymentListView,
     ConfirmPaymentView,
-    AdminDashboardStatsView
+    AdminDashboardStatsView,
+    RejectPaymentView
 )
 # We no longer need the default TokenObtainPairView here
 
@@ -53,4 +54,5 @@ urlpatterns = [
     # --- 2. ADD NEW URLs for payment confirmation ---
     path('admin/pending-payments/', PendingPaymentListView.as_view(), name='pending-payments'),
     path('admin/confirm-payment/<int:pk>/', ConfirmPaymentView.as_view(), name='confirm-payment'),
+    path('admin/reject-payment/<int:pk>/', RejectPaymentView.as_view(), name='reject-payment'),
 ]
