@@ -1,80 +1,71 @@
 // lib/models/pending_user.dart
 
-// This class matches the 'profile' data from your backend
-// lib/models/pending_user.dart
-
-class UserProfile {
-  final String education;
-  final String occupation;
-  final String reasonForJoining;
-  final int age;
-  final String? resumeUrl;
-  final String? idUrl;
-  final String? paymentReceiptUrl; // <-- 1. ADD THIS
-  final String applicationType;
-
-  UserProfile({
-    required this.education,
-    required this.occupation,
-    required this.reasonForJoining,
-    required this.age,
-    this.resumeUrl,
-    this.idUrl,
-    this.paymentReceiptUrl, // <-- 2. ADD THIS
-    required this.applicationType,
-  });
-
-  factory UserProfile.fromJson(Map<String, dynamic> json) {
-    // Helper to build full URLs for files
-    //String? getFullUrl(String? path) {
-      //if (path == null || path.isEmpty) return null;
-      // Use 10.0.2.2 for Android emulator
-      //String baseUrl = 'http://10.0.2.2:8000';
-      //return '$baseUrl$path';
-    //}
-
-    return UserProfile(
-      education: json['education'] ?? '',
-      occupation: json['occupation'] ?? '',
-      reasonForJoining: json['reason_for_joining'] ?? '',
-      age: json['age'] ?? 0,
-      resumeUrl: json['resume_url'], // <-- Use new field
-      idUrl: json['identification_url'], // <-- Use new field
-      paymentReceiptUrl: json['payment_receipt_url'], // <-- Use new field
-      applicationType: json['application_type'] ?? 'MEMBERSHIP',
-    );
-  }
-}
-
-// This is the main class for the applicant
 class PendingUser {
   final int id;
-  final String name; // This is the 'first_name' field
+  final String firstName;
   final String email;
   final String phone;
   final String memberStatus;
-  final DateTime dateJoined;
-  final UserProfile profile; // The nested profile data
+  final DateTime dateJoined; // <--- 1. ADDED THIS FIELD
+  final UserProfile profile;
 
   PendingUser({
     required this.id,
-    required this.name,
+    required this.firstName,
     required this.email,
     required this.phone,
     required this.memberStatus,
-    required this.dateJoined,
+    required this.dateJoined, // <--- 2. ADDED TO CONSTRUCTOR
     required this.profile,
   });
 
   factory PendingUser.fromJson(Map<String, dynamic> json) {
     return PendingUser(
       id: json['id'],
-      name: json['first_name'] ?? '',
+      firstName: json['first_name'] ?? '',
       email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
-      memberStatus: json['member_status'],
-      dateJoined: DateTime.parse(json['date_joined']),
+      phone: json['phone'] ?? 'N/A',
+      memberStatus: json['member_status'] ?? 'PENDING',
+      // 3. PARSE THE DATE (Default to now if missing)
+      dateJoined: json['date_joined'] != null 
+          ? DateTime.parse(json['date_joined']) 
+          : DateTime.now(),
       profile: UserProfile.fromJson(json['profile'] ?? {}),
+    );
+  }
+}
+
+class UserProfile {
+  final String applicationType;
+  final String education;
+  final String occupation;
+  final String reasonForJoining;
+  final String resumeUrl;
+  final String identificationUrl;
+  final String icNumber;
+  final String paymentReceiptUrl;
+
+  UserProfile({
+    required this.applicationType,
+    required this.education,
+    required this.occupation,
+    required this.reasonForJoining,
+    required this.resumeUrl,
+    required this.identificationUrl,
+    required this.icNumber,
+    required this.paymentReceiptUrl,
+  });
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      applicationType: json['application_type'] ?? 'MEMBERSHIP',
+      education: json['education'] ?? '',
+      occupation: json['occupation'] ?? '',
+      reasonForJoining: json['reason_for_joining'] ?? '',
+      resumeUrl: json['resume'] ?? '',
+      identificationUrl: json['identification'] ?? '',
+      icNumber: json['ic_number'] ?? 'N/A',
+      paymentReceiptUrl: json['payment_receipt'] ?? '',
     );
   }
 }

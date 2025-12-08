@@ -104,6 +104,7 @@ class AuthService {
         await prefs.setString('first_name', userData['first_name']);
         await prefs.setString('phone', userData['phone']);
         await prefs.setBool('has_receipt', userData['has_receipt'] ?? false);
+        await prefs.setString('rejection_reason', userData['rejection_reason'] ?? '');
 
         return userData; // Return the user data to navigate to the correct dashboard
       } else {
@@ -125,6 +126,7 @@ class AuthService {
       'first_name': prefs.getString('first_name') ?? prefs.getString('username') ?? 'User',
       'phone': prefs.getString('phone') ?? 'N/A',
       'has_receipt': prefs.getBool('has_receipt') ?? false,
+      'rejection_reason': prefs.getString('rejection_reason'),
     };
   }
 
@@ -279,37 +281,40 @@ Future<List<PendingUser>> getPendingUsers() async {
 // --- ADMIN: UPDATE USER STATUS ---
 // This one function will handle approve, reject, and interview
 // It now accepts 'APPROVE_MEMBER' and 'APPROVE_VOLUNTEER'
-Future<bool> updateUserStatus(int userId, String action) async {
-  final token = await _storage.read(key: 'access_token');
-  String endpoint = '';
+Future<bool> updateUserStatus(int userId, String action, {String? reason}) async {
+    final token = await _storage.read(key: 'access_token');
+    
+    // Determine the correct endpoint based on action
+    String endpoint = '';
+    if (action == 'APPROVE_MEMBER') {
+      endpoint = 'admin/approve-member/$userId/';
+    } else if (action == 'APPROVE_VOLUNTEER') {
+      endpoint = 'admin/approve-volunteer/$userId/';
+    } else if (action == 'REJECT') {
+      endpoint = 'admin/reject/$userId/';
+    } else if (action == 'INTERVIEW') {
+      endpoint = 'admin/interview/$userId/';
+    }
 
-  // --- NEW LOGIC ---
-  if (action == 'APPROVE_MEMBER') {
-    endpoint = 'admin/approve-member/$userId/';
-  } else if (action == 'APPROVE_VOLUNTEER') {
-    endpoint = 'admin/approve-volunteer/$userId/';
-  } else if (action == 'REJECT') {
-    endpoint = 'admin/reject/$userId/';
-  } else if (action == 'INTERVIEW') {
-    endpoint = 'admin/interview/$userId/';
-  } else {
-    return false; // Invalid action
-  }
-  // --- END NEW LOGIC ---
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl$endpoint'),
+        headers: {
+          'Content-Type': 'application/json', // Important for sending JSON
+          'Authorization': 'Bearer $token',
+        },
+        // Only send body if we have a reason (for rejection)
+        body: (action == 'REJECT' && reason != null) 
+            ? jsonEncode({'reason': reason}) 
+            : null,
+      );
 
-  try {
-    final response = await http.post(
-      Uri.parse('$_baseUrl$endpoint'),
-      headers: {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token',
-      },
-    );
-    return response.statusCode == 200; // Return true if successful
-  } catch (e) {
-    return false;
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error updating user: $e");
+      return false;
+    }
   }
-}
 
 // This allows the user to upload their payment receipt
 Future<bool> uploadReceipt(File receiptFile) async {

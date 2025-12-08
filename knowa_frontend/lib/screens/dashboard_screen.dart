@@ -472,10 +472,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
 
       case 'REJECTED':
+        String reason = _userData?['rejection_reason'] ?? '';
+        if (reason.isEmpty) reason = 'Your application was not approved at this time.';
+
         return _buildStatusCard(
-          title: 'Application Status',
-          text: 'Your application was not approved at this time.',
-          icon: Icons.close,
+          title: 'Application Status: Rejected',
+          text: reason, // <-- SHOW THE REAL REASON HERE
+          icon: Icons.highlight_off, // Changed icon to look more like an alert
           color: Colors.red,
         );
 

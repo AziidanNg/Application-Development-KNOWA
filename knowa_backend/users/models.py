@@ -110,6 +110,7 @@ class UserProfile(models.Model):
     resume = models.FileField(upload_to='resumes/', blank=True, null=True)
     identification = models.FileField(upload_to='identifications/', blank=True, null=True)
     payment_receipt = models.FileField(upload_to='receipts/', blank=True, null=True)
+    rejection_reason = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username}'s Profile"

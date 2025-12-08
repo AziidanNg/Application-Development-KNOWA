@@ -39,9 +39,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'education': {'required': False},
             'occupation': {'required': False},
             'reason_for_joining': {'required': False},
-            'resume': {'write_only': True, 'required': False},
-            'identification': {'write_only': True, 'required': False},
-            'payment_receipt': {'write_only': True, 'required': False},
+            'resume': {'required': False},
+            'identification': {'required': False},
+            'payment_receipt': {'required': False},
             'application_type': {'required': False},
         }
 
@@ -80,6 +80,13 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             has_receipt = True
 
         token['has_receipt'] = has_receipt
+        
+        # Check for Rejection Reason
+        rejection_reason = ""
+        if hasattr(user, 'profile') and user.profile.rejection_reason:
+            rejection_reason = user.profile.rejection_reason
+        
+        token['rejection_reason'] = rejection_reason
 
         return token
 

@@ -29,29 +29,21 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
     });
   }
 
-  void _updateUser(int userId, String action, String applicationType) async {
+  void _updateUser(int userId, String action, String applicationType, {String? reason}) async {
     String finalAction = action;
 
-    // 1. Handle Approval (Member vs Volunteer)
     if (action == 'Approve') {
-      finalAction = applicationType == 'MEMBERSHIP' 
-          ? 'APPROVE_MEMBER' 
-          : 'APPROVE_VOLUNTEER';
-    }
-    
-    // 2. Handle Rejection (This is the critical part)
-    else if (action == 'Reject') {
-      finalAction = 'REJECT'; // This must match your AuthService logic
-    }
-    
-    // 3. Handle Interview
-    else if (action == 'Interview') {
+      finalAction = applicationType == 'MEMBERSHIP' ? 'APPROVE_MEMBER' : 'APPROVE_VOLUNTEER';
+    } else if (action == 'Reject') {
+      finalAction = 'REJECT';
+    } else if (action == 'Interview') {
       finalAction = 'INTERVIEW';
     }
 
-    // 4. Call the API
-    bool success = await _authService.updateUserStatus(userId, finalAction);
+    // Pass the reason to the service
+    bool success = await _authService.updateUserStatus(userId, finalAction, reason: reason);
     
+    // ... (rest of your snackbar/refresh logic is the same) ...
     if (mounted) {
        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -60,11 +52,69 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
         ),
       );
     }
-    
-    // 5. REFRESH THE LIST
     if (success) {
       _loadPendingUsers(); 
     }
+  }
+
+  void _showRejectDialog(int userId) {
+    String selectedReason = 'Not suitable'; // Default value
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reject Application'),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Select a reason for rejection:'),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedReason,
+                    isExpanded: true, // Prevents overflow
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Not suitable', child: Text('Not suitable for role')),
+                      DropdownMenuItem(value: 'Underage', child: Text('Underage (<18)')),
+                      DropdownMenuItem(value: 'Incomplete Documents', child: Text('Incomplete/Blurry Documents')),
+                      DropdownMenuItem(value: 'Position Filled', child: Text('Position Filled')),
+                      DropdownMenuItem(value: 'Other', child: Text('Other')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        selectedReason = value!;
+                      });
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                // Call the update function with the reason
+                _updateUser(userId, 'Reject', 'N/A', reason: selectedReason);
+              },
+              child: const Text('Reject & Notify'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -112,7 +162,7 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              Text(user.firstName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                               Text(
                                 user.profile.applicationType == 'MEMBERSHIP' 
                                   ? 'Applied for: Membership' 
@@ -157,7 +207,7 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                             text: 'Reject',
                             color: Colors.red,
                             // --- UPDATE THIS ---
-                            onPressed: () => _updateUser(user.id, 'Reject', user.profile.applicationType),
+                            onPressed: () => _showRejectDialog(user.id),
                           ),
                           _buildActionButton(
                             text: 'Interview',

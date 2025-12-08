@@ -110,7 +110,7 @@ class _AdminPendingPaymentsScreenState extends State<AdminPendingPaymentsScreen>
                     backgroundColor: Colors.grey,
                     child: Icon(Icons.person, color: Colors.white),
                   ),
-                  title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(user.firstName, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(user.email),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,

@@ -92,16 +92,26 @@ class RejectUserView(APIView):
 
     def post(self, request, pk, format=None):
         try:
-            # You can reject a user who is PENDING or in INTERVIEW
+            # Get the user
             user = User.objects.get(
                 pk=pk, 
                 member_status__in=[User.MemberStatus.PENDING, User.MemberStatus.INTERVIEW]
             )
-            user.member_status = User.MemberStatus.REJECTED # Change status to REJECTED
+            
+            # 1. Update Status
+            user.member_status = User.MemberStatus.REJECTED
             user.save()
-            return Response({'status': 'User rejected'}, status=status.HTTP_200_OK)
+
+            # 2. Save the Reason (in the profile)
+            reason = request.data.get('reason', 'Application rejected by Admin')
+            # Ensure profile exists before saving
+            if hasattr(user, 'profile'):
+                user.profile.rejection_reason = reason
+                user.profile.save()
+
+            return Response({'status': 'User rejected', 'reason': reason}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
-            return Response({'error': 'User not found or not pending/interview'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'User not found or not pending'}, status=status.HTTP_404_NOT_FOUND)
 
 # 4. View to set user status to INTERVIEW
 class InterviewUserView(APIView):
