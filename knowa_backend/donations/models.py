@@ -2,12 +2,12 @@
 from django.db import models
 from django.conf import settings
 
-class Donation(models.Model):
-    class DonationStatus(models.TextChoices):
+class DonationStatus(models.TextChoices):
         PENDING = 'PENDING', 'Pending'
         APPROVED = 'APPROVED', 'Approved'
         REJECTED = 'REJECTED', 'Rejected'
 
+class Donation(models.Model):
     # Link to the user who donated
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
@@ -28,6 +28,8 @@ class Donation(models.Model):
         choices=DonationStatus.choices,
         default=DonationStatus.PENDING # All new donations are PENDING
     )
+
+    rejection_reason = models.TextField(blank=True, null=True)
 
     # Timestamp
     submitted_at = models.DateTimeField(auto_now_add=True)

@@ -11,7 +11,7 @@ from .serializers import MyTokenObtainPairSerializer # We'll use this to create 
 from django.utils import timezone
 from django.db.models import Sum, Q
 from events.models import Event
-from donations.models import Donation
+from donations.models import Donation, DonationStatus
 
 #
 # --- This is your RegistrationView ---
@@ -341,7 +341,7 @@ class AdminDashboardStatsView(APIView):
         current_month = timezone.now().month
         current_year = timezone.now().year
         monthly_donations = Donation.objects.filter(
-            status=Donation.DonationStatus.APPROVED,
+            status=DonationStatus.APPROVED,
             submitted_at__year=current_year,
             submitted_at__month=current_month
         ).aggregate(Sum('amount'))['amount__sum'] or 0.00

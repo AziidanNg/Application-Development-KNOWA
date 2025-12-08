@@ -5,7 +5,9 @@ from .views import (
     PendingDonationListView,
     ApproveDonationView,
     RejectDonationView,
-    DonationGoalView
+    DonationGoalView,
+    UserLatestIssueView,
+    FixDonationView
 )
 
 urlpatterns = [
@@ -25,4 +27,8 @@ urlpatterns = [
 
     # POST /api/donations/admin/reject/<id>/
     path('admin/reject/<int:pk>/', RejectDonationView.as_view(), name='donation-reject'),
+
+    path('my-latest-issue/', UserLatestIssueView.as_view(), name='my-latest-issue'),
+
+    path('<int:pk>/fix/', FixDonationView.as_view(), name='fix-donation'),
 ]

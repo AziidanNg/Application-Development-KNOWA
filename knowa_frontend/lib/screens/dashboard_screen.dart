@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:knowa_frontend/screens/payment_screen.dart';
 import 'package:knowa_frontend/services/donation_service.dart';
 import 'package:knowa_frontend/screens/donation_page.dart';
+import 'package:knowa_frontend/screens/fix_donation_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -25,18 +26,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // This will hold our user data
   Map<String, dynamic>? _userData;
+  Map<String, dynamic>? _donationIssue; // Holds the rejection reason if any
 
   // This will hold the events
   Future<List<Event>>? _eventsFuture;
 
   late Future<Map<String, dynamic>> _donationGoalFuture;
 
-  // We've moved the user loading to its own function
   @override
   void initState() {
     super.initState();
     _loadData();
     _donationGoalFuture = _donationService.getDonationGoal();
+    _checkDonationIssues();
   }
 
   // This function gets the user data first, then loads the events
@@ -58,6 +60,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // --- UPDATED: Simulating a check for donation issues ---
+  void _checkDonationIssues() async {
+    // Call the real API
+    final issue = await _donationService.getLatestIssue();
+    
+    if (mounted) {
+      setState(() {
+        // If issue is null, this clears the alert. 
+        // If issue exists, this shows the alert.
+        _donationIssue = issue; 
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -65,6 +81,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text('Home', style: TextStyle(color: Colors.black)),
+        automaticallyImplyLeading: false, // Prevents back button to login
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none_outlined, color: Colors.black),
@@ -82,7 +99,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // This now reads the state variable, which is much safer
+            // User Greeting
             Text(
               'Hi, ${_userData?['first_name'] ?? 'User'} 👋',
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
@@ -90,72 +107,131 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 24),
 
             // "Upcoming Events" Section
-                const Text(
-                  'Upcoming Events',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                _buildEventList(),
-                
-                // --- ADD ALL THIS NEW CODE ---
-
-                // --- 1. Donation Section ---
-                const SizedBox(height: 24),
-                const Text(
-                  'Donation',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                FutureBuilder<Map<String, dynamic>>(
-                  future: _donationGoalFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      final goalData = snapshot.data!;
-                      return _buildDonationCard(goalData); // Pass data to the widget
-                    } else if (snapshot.hasError) {
-                      return Text('Error: ${snapshot.error}');
-                    }
-                    // By default, show a loading spinner.
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                ),
-
-                // --- 2. Announcements Section ---
-                const SizedBox(height: 24),
-                const Text(
-                  'Announcements',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                // This new widget checks the user's status and shows the correct card
-                _buildApplicationStatusWidget(),
-                const SizedBox(height: 12),
-                _buildAnnouncementCard(
-                  title: 'KNOWA EduTalks',
-                  text: 'Big dreams start with small stories. Don\'t miss KNOWA EduTalks this December',
-                ),
-
-                // --- 3. My Activities Section ---
-                const SizedBox(height: 24),
-                const Text(
-                  'My Activities',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                _buildActivityCard(
-                  title: 'Events Joined',
-                  value: '12', // This is a placeholder
-                ),
-                
-                // --- END OF NEW CODE ---
-              ],
+            const Text(
+              'Upcoming Events',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-          ),
-      // TODO: Add the Bottom Navigation Bar here
+            const SizedBox(height: 16),
+            _buildEventList(),
+            
+            // --- Donation Section ---
+            const SizedBox(height: 24),
+            const Text(
+              'Donation',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            FutureBuilder<Map<String, dynamic>>(
+              future: _donationGoalFuture,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  final goalData = snapshot.data!;
+                  return _buildDonationCard(goalData);
+                } else if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
+                }
+                return const Center(child: CircularProgressIndicator());
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- NEW: DONATION ISSUE ALERT ---
+            // This only shows up if there is an issue found
+            if (_donationIssue != null) 
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24.0),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50], // Light red background
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red, size: 30),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Action Required: Donation Issue',
+                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Admin Note: "${_donationIssue!['reason']}"',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.red),
+                        onPressed: () async {
+                          // 1. Get the data from the alert
+                          int id = _donationIssue!['id'];
+                          String reason = _donationIssue!['reason'];
+
+                          // 2. Navigate to Fix Screen
+                          final result = await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => FixDonationScreen(donationId: id, reason: reason),
+                            ),
+                          );
+
+                          // 3. If fixed successfully (result == true), refresh dashboard
+                          if (result == true) {
+                            setState(() {
+                              _donationIssue = null; // Remove the alert immediately
+                            });
+                            // Optionally reload other data
+                            // _loadData(); 
+                          }
+                        },
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            // ---------------------------------
+
+            // --- Announcements Section ---
+            const Text(
+              'Announcements',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            // This widget checks the user's status and shows the correct card
+            _buildApplicationStatusWidget(),
+            const SizedBox(height: 12),
+            _buildAnnouncementCard(
+              title: 'KNOWA EduTalks',
+              text: 'Big dreams start with small stories. Don\'t miss KNOWA EduTalks this December',
+            ),
+
+            // --- My Activities Section ---
+            const SizedBox(height: 24),
+            const Text(
+              'My Activities',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _buildActivityCard(
+              title: 'Events Joined',
+              value: '12', 
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  // This widget builds the list of events
+  // ... (Keep all your existing helper widgets: _buildEventList, _buildEventCard, _buildDonationCard, _buildAnnouncementCard, _buildActivityCard, _buildApplicationStatusWidget, _buildPaymentCard, _buildStatusCard) ...
+  // Paste them here unchanged.
+
   Widget _buildEventList() {
     // If the user data or events haven't loaded, show a spinner
     if (_eventsFuture == null || _userData == null) {
@@ -189,19 +265,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // This widget is the card from your design
   Widget _buildEventCard(BuildContext context, Event event, Map<String, dynamic> userData) {
     final String formattedDate = DateFormat('MMM d, yyyy').format(event.startTime);
 
     return GestureDetector(
       onTap: () {
-        // Pass the user data to the detail screen
         Navigator.of(context).push(
           MaterialPageRoute(builder: (context) => EventDetailScreen(event: event, userData: userData)),
         );
       },
       child: Container(
-        width: 250, // Fixed width for each card
+        width: 250,
         margin: const EdgeInsets.only(right: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,7 +287,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: 150,
                 width: 250,
                 fit: BoxFit.cover,
-                // Handle image loading/error
                 loadingBuilder: (context, child, progress) {
                   return progress == null ? child : Container(height: 150, color: Colors.grey[200], child: const Center(child: CircularProgressIndicator()));
                 },
@@ -261,14 +334,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 8),
             LinearProgressIndicator(
-              value: progress, // Use real progress
+              value: progress, 
               backgroundColor: Colors.grey[200],
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                // Navigate to the full Donation Page
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => const DonationPage()),
                 );
@@ -285,59 +357,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- WIDGET FOR ANNOUNCEMENT CARD ---
   Widget _buildAnnouncementCard({required String title, required String text}) {
-    // --- NEW: Check if this is the "Join" card ---
     bool isJoinCard = title == 'Join KNOWA';
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell( // --- NEW: Wrap with InkWell ---
+      child: InkWell(
         onTap: isJoinCard ? () {
-          // --- NEW: Navigation logic ---
           Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => const MembershipApplicationScreen()),
           );
-        } : null, // Disable tap for other cards
+        } : null,
         borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(text, style: TextStyle(color: Colors.grey[700])),
-                ],
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(text, style: TextStyle(color: Colors.grey[700])),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            // Placeholder for the "Join KNOWA" button
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            )
-          ],
+              const SizedBox(width: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[800],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              )
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
-  // --- WIDGET FOR ACTIVITY CARD ---
   Widget _buildActivityCard({required String title, required String value}) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
-        width: 150, // Fixed width
+        width: 150, 
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,45 +418,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // This function checks the user's status and shows the correct card
-Widget _buildApplicationStatusWidget() {
-  // If user data hasn't loaded yet, show an empty box
-  if (_userData == null) {
-    return const SizedBox(height: 60); 
-  }
+  Widget _buildApplicationStatusWidget() {
+    if (_userData == null) {
+      return const SizedBox(height: 60); 
+    }
 
-  // Get the user's status
-  final String status = _userData?['member_status'] ?? 'PUBLIC';
+    final String status = _userData?['member_status'] ?? 'PUBLIC';
 
-  switch (status) {
-    case 'APPROVED_UNPAID':
-      bool hasReceipt = _userData?['has_receipt'] ?? false;
+    switch (status) {
+      case 'APPROVED_UNPAID':
+        bool hasReceipt = _userData?['has_receipt'] ?? false;
+        if (hasReceipt) {
+          return _buildStatusCard(
+            title: 'Payment Verification Pending',
+            text: 'We have received your receipt. An admin will verify it shortly.',
+            icon: Icons.receipt_long,
+            color: Colors.blue,
+          );
+        } else {
+          return _buildPaymentCard(); 
+        }
 
-          if (hasReceipt) {
-            return _buildStatusCard(
-              title: 'Payment Verification Pending',
-              text: 'We have received your receipt. An admin will verify it shortly.',
-              icon: Icons.receipt_long,
-              color: Colors.blue,
-            );
-          } else {
-            return _buildPaymentCard(); // Show "Pay Fee" only if no receipt
-          }
-
-    case 'PUBLIC':
-        // "Join KNOWA" card
+      case 'PUBLIC':
         return InkWell(
           onTap: () async {
-            // --- WAIT FOR THE RESULT ---
             final result = await Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const MembershipApplicationScreen()),
             );
-
-            // --- IF SUCCESS (TRUE), RELOAD DATA ---
             if (result == true) {
-              _loadData(); // This refreshes the screen instantly!
+              _loadData(); 
             }
-            // --------------------------------------
           },
           child: _buildAnnouncementCard(
             title: 'Join KNOWA',
@@ -397,118 +455,111 @@ Widget _buildApplicationStatusWidget() {
           ),
         );
 
-    case 'PENDING':
-      // 2. If they are pending, show a "Pending" status card
-      return _buildStatusCard(
-        title: 'Application Pending',
-        text: 'Your application is currently under review by our team.',
-        icon: Icons.hourglass_top_outlined,
-        color: Colors.orange,
-      );
+      case 'PENDING':
+        return _buildStatusCard(
+          title: 'Application Pending',
+          text: 'Your application is currently under review by our team.',
+          icon: Icons.hourglass_top_outlined,
+          color: Colors.orange,
+        );
 
-    case 'INTERVIEW':
-      // 3. If they are set for interview, show an "Interview" card
-      return _buildStatusCard(
-        title: 'Interview',
-        text: 'The admin team has requested an interview. Please check your email.',
-        icon: Icons.record_voice_over_outlined,
-        color: Colors.blue,
-      );
+      case 'INTERVIEW':
+        return _buildStatusCard(
+          title: 'Interview',
+          text: 'The admin team has requested an interview. Please check your email.',
+          icon: Icons.record_voice_over_outlined,
+          color: Colors.blue,
+        );
 
-    case 'REJECTED':
-      // 4. If they were rejected, show a "Rejected" card
-      return _buildStatusCard(
-        title: 'Application Status',
-        text: 'Your application was not approved at this time.',
-        icon: Icons.close,
-        color: Colors.red,
-      );
+      case 'REJECTED':
+        return _buildStatusCard(
+          title: 'Application Status',
+          text: 'Your application was not approved at this time.',
+          icon: Icons.close,
+          color: Colors.red,
+        );
 
-    case 'MEMBER':
-      // Show a "Welcome" card for full members
-      return _buildStatusCard(
-        title: 'Welcome, NGO Member!',
-        text: 'You now have full access to member features.',
-        icon: Icons.check_circle_outline,
-        color: Colors.green,
-      );
+      case 'MEMBER':
+        return _buildStatusCard(
+          title: 'Welcome, NGO Member!',
+          text: 'You now have full access to member features.',
+          icon: Icons.check_circle_outline,
+          color: Colors.green,
+        );
 
-    case 'VOLUNTEER':
-      // Show a "Welcome" card for volunteers
-      return _buildStatusCard(
-        title: 'Welcome, Volunteer!',
-        text: 'You are now registered as a project-based volunteer.',
-        icon: Icons.check_circle_outline,
-        color: Colors.green,
-      );
+      case 'VOLUNTEER':
+        return _buildStatusCard(
+          title: 'Welcome, Volunteer!',
+          text: 'You are now registered as a project-based volunteer.',
+          icon: Icons.check_circle_outline,
+          color: Colors.green,
+        );
 
-    default:
-      return const SizedBox.shrink();
+      default:
+        return const SizedBox.shrink();
+    }
   }
-}
 
-// --- ADD THIS HELPER for the new "Pay Fee" card ---
-Widget _buildPaymentCard() {
-  return Card(
-    elevation: 2,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: BorderSide(color: Colors.green.shade700, width: 2)
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Congratulations! Your application is approved.',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green.shade800),
-          ),
-          const SizedBox(height: 8),
-          const Text('Please pay the one-time membership fee to become a full member.'),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).push(
+  Widget _buildPaymentCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.green.shade700, width: 2)
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Congratulations! Your application is approved.',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+            ),
+            const SizedBox(height: 8),
+            const Text('Please pay the one-time membership fee to become a full member.'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => const PaymentScreen()),
                 );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Pay Membership Fee', style: TextStyle(color: Colors.white)),
-          )
-        ],
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade700,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Pay Membership Fee', style: TextStyle(color: Colors.white)),
+            )
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-// --- ADD THIS HELPER for the new status cards ---
-Widget _buildStatusCard({required String title, required String text, required IconData icon, required Color color}) {
-  return Card(
-    elevation: 2,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 40),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(text, style: TextStyle(color: Colors.grey[700])),
-              ],
+  Widget _buildStatusCard({required String title, required String text, required IconData icon, required Color color}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 40),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(text, style: TextStyle(color: Colors.grey[700])),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

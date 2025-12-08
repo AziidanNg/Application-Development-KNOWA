@@ -51,23 +51,93 @@ class _AdminPendingDonationsScreenState extends State<AdminPendingDonationsScree
   }
 
   // Function to handle the admin action
-  void _handleDonation(int donationId, String action) async {
+  // Function to handle the admin action
+  void _handleDonation(int donationId, String action, {String? reason}) async {
     bool success = false;
+    String successMessage = '';
+
     if (action == 'Approve') {
       success = await _donationService.approveDonation(donationId);
+      successMessage = 'Receipt acknowledged successfully.';
     } else {
-      success = await _donationService.rejectDonation(donationId);
+      // We are "Notifying Issue" (Rejecting)
+      success = await _donationService.rejectDonation(donationId, reason: reason); 
+      successMessage = 'Issue notified to donor: $reason';
     }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? 'Donation $action' 'd successfully' : 'Failed to update donation.'),
-          backgroundColor: success ? Colors.green : Colors.red,
+          content: Text(success ? successMessage : 'Failed to update donation.'),
+          backgroundColor: success ? Colors.green : Colors.orange,
         ),
       );
     }
-    _loadPendingDonations(); // Refresh the list
+    _loadPendingDonations(); 
+  }
+
+  void _showNotifyIssueDialog(int donationId) {
+    String selectedReason = 'Blurry Receipt'; // Default reason
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Notify Issue to Donor'),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Select the issue with this donation:'),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedReason,
+                    isExpanded: true, // --- FIX: prevents overflow by fitting to width ---
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Blurry Receipt', 
+                        // Added TextOverflow.ellipsis as a safety measure
+                        child: Text('Receipt is blurry/unreadable', overflow: TextOverflow.ellipsis)
+                      ),
+                      DropdownMenuItem(value: 'Amount Mismatch', child: Text('Amount does not match receipt')),
+                      DropdownMenuItem(value: 'Duplicate', child: Text('Duplicate submission')),
+                      DropdownMenuItem(value: 'Invalid Date', child: Text('Receipt date is invalid')),
+                      DropdownMenuItem(value: 'Other', child: Text('Other (See email)')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        selectedReason = value!;
+                      });
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // Cancel
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                // Call the reject function WITH the reason
+                _handleDonation(donationId, 'Reject', reason: selectedReason); 
+              },
+              child: const Text('Notify User'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -112,14 +182,23 @@ class _AdminPendingDonationsScreenState extends State<AdminPendingDonationsScree
                             child: Icon(Icons.person, color: Colors.white),
                           ),
                           const SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(donation.username, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                              Text('Submitted $formattedDate', style: const TextStyle(color: Colors.grey)),
-                            ],
+                          // --- FIX START: Use Expanded to prevent overflow ---
+                          Expanded( 
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  donation.username, 
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  maxLines: 1, // Limit to 1 line
+                                  overflow: TextOverflow.ellipsis, // Add '...' if too long
+                                ),
+                                Text('Submitted $formattedDate', style: const TextStyle(color: Colors.grey)),
+                              ],
+                            ),
                           ),
-                          const Spacer(),
+
+                          const SizedBox(width: 8), // Small gap
                           Text(
                             'RM${donation.amount.toStringAsFixed(2)}',
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
@@ -139,14 +218,14 @@ class _AdminPendingDonationsScreenState extends State<AdminPendingDonationsScree
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _buildActionButton(
-                            text: 'Approve',
+                            text: 'Acknowledge Receipt',
                             color: Colors.green.shade700,
                             onPressed: () => _handleDonation(donation.id, 'Approve'),
                           ),
                           _buildActionButton(
-                            text: 'Reject',
-                            color: Colors.red,
-                            onPressed: () => _handleDonation(donation.id, 'Reject'),
+                            text: 'Notify Issue',
+                            color: Colors.orange,
+                            onPressed: () => _showNotifyIssueDialog(donation.id),
                           ),
                         ],
                       )

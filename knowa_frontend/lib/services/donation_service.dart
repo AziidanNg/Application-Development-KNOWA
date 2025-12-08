@@ -96,13 +96,16 @@ class DonationService {
   }
 
   // --- ADMIN: APPROVE A DONATION ---
-  Future<bool> approveDonation(int donationId) async {
+  Future<bool> approveDonation(int id) async {
     final token = await _storage.read(key: 'access_token');
     try {
+      // --- CHANGE THIS URL ---
+      // OLD: Uri.parse('$_baseUrl$id/approve/')
+      // NEW: Matches 'admin/approve/<int:pk>/' from your urls.py
       final response = await http.post(
-        Uri.parse('${_baseUrl}admin/approve/$donationId/'),
+        Uri.parse('${_baseUrl}admin/approve/$id/'), 
         headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
+          'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
@@ -112,19 +115,81 @@ class DonationService {
     }
   }
 
-  // --- ADMIN: REJECT A DONATION ---
-  Future<bool> rejectDonation(int donationId) async {
+  // FIX 2: Reject Function
+  Future<bool> rejectDonation(int id, {String? reason}) async {
     final token = await _storage.read(key: 'access_token');
     try {
+      // --- CHANGE THIS URL ---
+      // OLD: Uri.parse('$_baseUrl$id/reject/')
+      // NEW: Matches 'admin/reject/<int:pk>/' from your urls.py
       final response = await http.post(
-        Uri.parse('${_baseUrl}admin/reject/$donationId/'),
+        Uri.parse('${_baseUrl}admin/reject/$id/'), 
         headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'reason': reason ?? 'Issue with donation'
+        }),
+      );
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error rejecting donation: $e");
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getLatestIssue() async {
+    final token = await _storage.read(key: 'access_token');
+    try {
+      // --- THE FIX ---
+      // We remove 'donations/' because _baseUrl likely already includes it.
+      // Correct URL: .../api/donations/my-latest-issue/
+      final response = await http.get(
+        Uri.parse('${_baseUrl}my-latest-issue/'), 
+        headers: {
+          'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
+
+      print("Check Issue Status: ${response.statusCode}"); // Debug print
+      print("Check Issue Body: ${response.body}");       // Debug print
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      print("Error fetching latest issue: $e");
+      return null;
+    }
+  }
+
+  // Function to re-upload receipt and fix donation
+  Future<bool> fixDonation(int id, File receiptFile) async {
+    final token = await _storage.read(key: 'access_token');
+    
+    // Create Multipart request for file upload
+    var request = http.MultipartRequest(
+      'PATCH',
+      Uri.parse('${_baseUrl}$id/fix/'),
+    );
+    
+    request.headers['Authorization'] = 'Bearer $token';
+    
+    // Attach the new file
+    request.files.add(
+      await http.MultipartFile.fromPath('receipt', receiptFile.path),
+    );
+
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
       return response.statusCode == 200;
     } catch (e) {
+      print("Error fixing donation: $e");
       return false;
     }
   }
