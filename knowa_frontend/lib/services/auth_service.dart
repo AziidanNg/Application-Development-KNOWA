@@ -186,7 +186,7 @@ Future<Map<String, dynamic>> applyForMembership({
   required String education,
   required String occupation,
   required String reason,
-  required String age,
+  required String icNumber,
   File? resumeFile, // For resume.pdf
   File? idFile,     // For ID.jpg
 }) async {
@@ -202,7 +202,7 @@ Future<Map<String, dynamic>> applyForMembership({
   request.fields['education'] = education;
   request.fields['occupation'] = occupation;
   request.fields['reason_for_joining'] = reason;
-  request.fields['age'] = age;
+  request.fields['ic_number'] = icNumber;
 
   // --- Add the resume file (if it exists) ---
   if (resumeFile != null) {

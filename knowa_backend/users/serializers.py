@@ -20,7 +20,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         # and the new payment receipt field
         fields = [
             'application_type',
-            'age', 
+            'ic_number', 
             'education', 
             'occupation', 
             'reason_for_joining', 
@@ -35,7 +35,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         # We add this so a user can't accidentally clear their application
         extra_kwargs = {
-            'age': {'required': False},
+            'ic_number': {'required': False},
             'education': {'required': False},
             'occupation': {'required': False},
             'reason_for_joining': {'required': False},

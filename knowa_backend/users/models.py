@@ -103,7 +103,7 @@ class UserProfile(models.Model):
     reason_for_joining = models.TextField(blank=True, null=True)
 
     # --- New Fields You Requested ---
-    age = models.PositiveIntegerField(blank=True, null=True)
+    ic_number = models.CharField(max_length=20, blank=True, null=True)
 
     # --- Attached Files (from image_1b26a2.png) ---
     # We need Pillow installed for this (which you already have)
