@@ -2,7 +2,7 @@
 # This file defines how event data is converted to and from JSON
 # This file controls what event info is sent to users and how new events are created
 from rest_framework import serializers
-from .models import Event
+from .models import Event, Meeting
 from users.models import User
 
 class EventSerializer(serializers.ModelSerializer):
@@ -66,3 +66,17 @@ class EventSerializer(serializers.ModelSerializer):
     def get_crew_count(self, obj):
         # This counts how many users are in the 'crew' list
         return obj.crew.count()
+    
+class MeetingSerializer(serializers.ModelSerializer):
+    participant_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Meeting
+        fields = [
+            'id', 'title', 'description', 'start_time', 'end_time', 
+            'is_online', 'location', 'participant_count', 'participants'
+        ]
+        extra_kwargs = {'participants': {'write_only': True}}
+
+    def get_participant_count(self, obj):
+        return obj.participants.count()

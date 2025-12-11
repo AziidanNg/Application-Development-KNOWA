@@ -51,3 +51,31 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+    
+class Meeting(models.Model):
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    
+    # Online/Offline logic
+    is_online = models.BooleanField(default=True)
+    location = models.CharField(max_length=255, blank=True) # or Meeting Link
+    
+    organizer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="organized_meetings"
+    )
+    
+    # The list of people invited
+    participants = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="meeting_invites",
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Meeting: {self.title}"

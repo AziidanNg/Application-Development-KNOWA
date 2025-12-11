@@ -4,8 +4,10 @@ from django.urls import path
 from .views import (
     EventListCreateView, 
     EventDetailView,
-    JoinEventAsParticipantView,  # <-- 1. IMPORT THIS
-    JoinEventAsCrewView          # <-- 2. IMPORT THIS
+    JoinEventAsParticipantView,  
+    JoinEventAsCrewView,
+    MeetingCreateView,
+    MeetingDetailView        
 )
 
 urlpatterns = [
@@ -25,4 +27,6 @@ urlpatterns = [
     
     # POST /api/events/1/join-crew/
     path('<int:pk>/join-crew/', JoinEventAsCrewView.as_view(), name='event-join-crew'),
+    path('meetings/create/', MeetingCreateView.as_view(), name='meeting-create'),
+    path('meetings/<int:pk>/', MeetingDetailView.as_view(), name='meeting-detail'),
 ]

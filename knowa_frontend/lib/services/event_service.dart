@@ -246,4 +246,77 @@ Future<Map<String, dynamic>> joinEvent(int eventId, {required bool asCrew}) asyn
     return {'success': false, 'error': 'Connection failed: ${e.toString()}'};
   }
 }
+
+Future<List<Map<String, dynamic>>> getPotentialParticipants() async {
+  final _storage = const FlutterSecureStorage();
+    final token = await _storage.read(key: 'access_token');
+    final response = await http.get(
+      Uri.parse('http://10.0.2.2:8000/api/users/admin/user-selection-list/'), // Adjust IP
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    }
+    return [];
+  }
+
+  // 2. Create Meeting
+  Future<bool> createMeeting(Map<String, dynamic> meetingData) async {
+    final _storage = const FlutterSecureStorage();
+    final token = await _storage.read(key: 'access_token');
+    final response = await http.post(
+      Uri.parse('http://10.0.2.2:8000/api/events/meetings/create/'), // Adjust URL
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(meetingData),
+    );
+    return response.statusCode == 201;
+  }
+
+  // 3. Update Meeting
+  Future<bool> updateMeeting(int id, Map<String, dynamic> meetingData) async {
+    final _storage = const FlutterSecureStorage();
+    final token = await _storage.read(key: 'access_token');
+    
+    try {
+      final response = await http.patch( // Use PATCH for partial updates
+        Uri.parse('${_baseUrl}meetings/$id/'), // This matches the new URL
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(meetingData),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error updating meeting: $e");
+      return false;
+    }
+  }
+
+  // 4. Delete Meeting
+  Future<bool> deleteMeeting(int id) async {
+    final _storage = const FlutterSecureStorage();
+    final token = await _storage.read(key: 'access_token');
+    
+    try {
+      final response = await http.delete(
+        Uri.parse('${_baseUrl}meetings/$id/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      return response.statusCode == 204; // 204 No Content = Success
+    } catch (e) {
+      print("Error deleting meeting: $e");
+      return false;
+    }
+  }
 }

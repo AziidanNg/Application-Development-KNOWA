@@ -8,6 +8,8 @@ from .models import Event
 from .serializers import EventSerializer
 from django.utils import timezone
 from users.models import User
+from .models import Meeting          
+from .serializers import MeetingSerializer
 
 # This view will handle BOTH:
 # 1. GET: Listing all events (for everyone)
@@ -120,3 +122,23 @@ class JoinEventAsCrewView(APIView):
         # Add the user to the event's crew
         event.crew.add(user)
         return Response({'status': 'Successfully registered as crew.'}, status=status.HTTP_200_OK)
+    
+class MeetingCreateView(generics.CreateAPIView):
+    """
+    Allows Admins to create a new meeting with selected participants.
+    """
+    queryset = Meeting.objects.all()
+    serializer_class = MeetingSerializer
+    permission_classes = [permissions.IsAdminUser] # Only Admins can create meetings
+
+    def perform_create(self, serializer):
+        # Automatically set the 'organizer' to the admin who is currently logged in
+        serializer.save(organizer=self.request.user)
+
+class MeetingDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Handles GET, PUT, PATCH, DELETE for a specific meeting.
+    """
+    queryset = Meeting.objects.all()
+    serializer_class = MeetingSerializer
+    permission_classes = [permissions.IsAdminUser] # Only Admins can edit/delete

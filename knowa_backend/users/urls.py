@@ -20,7 +20,8 @@ from .views import (
     MyScheduleView,
     StaffListView,
     NotificationListView,
-    MarkNotificationReadView
+    MarkNotificationReadView,
+    UserSelectionListView
 )
 
 urlpatterns = [
@@ -59,5 +60,6 @@ urlpatterns = [
 
     path('my-schedule/', MyScheduleView.as_view(), name='my-schedule'),
     path('notifications/', NotificationListView.as_view(), name='notifications'),
-    path('notifications/<int:pk>/read/', MarkNotificationReadView.as_view(), name='read-notification')
+    path('notifications/<int:pk>/read/', MarkNotificationReadView.as_view(), name='read-notification'),
+    path('admin/user-selection-list/', UserSelectionListView.as_view())
 ]

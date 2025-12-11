@@ -1,12 +1,11 @@
 // lib/screens/event_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/models/event.dart';
-import 'package:knowa_frontend/services/event_service.dart'; // Import the service
+import 'package:knowa_frontend/services/event_service.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// --- 1. CONVERT TO STATEFULWIDGET ---
 class EventDetailScreen extends StatefulWidget {
   final Event event;
   final Map<String, dynamic> userData; 
@@ -18,39 +17,39 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  // --- 2. ADD STATE VARIABLES ---
   final EventService _eventService = EventService();
   bool _isLoading = false;
 
-  // This is a local, changeable copy of the event
   late Event _currentEvent;
   late bool _isMember;
+  late bool _isAdmin; // <--- 1. New variable
   late String _buttonText;
 
   @override
   void initState() {
     super.initState();
-    // Initialize our local state with the data passed to the screen
     _currentEvent = widget.event;
-    _isMember = widget.userData['member_status'] == 'MEMBER' || widget.userData['is_staff'] == true;
+    
+    // Check roles
+    _isAdmin = widget.userData['is_staff'] ?? false; // <--- 2. Check Admin status
+    _isMember = widget.userData['member_status'] == 'MEMBER';
+    
+    // Set text based on member status (ignored if admin)
     _buttonText = _isMember ? 'Join as Crew' : 'Register Now';
   }
 
-  // --- 3. THIS IS THE COMPLETE BUTTON LOGIC ---
   void _handleRegisterOrJoin() async {
     setState(() { _isLoading = true; });
     
-    // Call the API
     final result = await _eventService.joinEvent(_currentEvent.id, asCrew: _isMember);
 
-    if (!mounted) return; // Check if the widget is still in the tree
+    if (!mounted) return; 
     
     if (result['success']) {
-      // --- IT WORKED! NOW RE-FETCH THE EVENT DATA ---
       try {
         final updatedEvent = await _eventService.getEventDetails(_currentEvent.id);
         setState(() {
-          _currentEvent = updatedEvent; // Update the UI with new counts
+          _currentEvent = updatedEvent; 
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -60,17 +59,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         );
       } catch (e) {
-        // Failed to re-fetch, but still show success
         setState(() { _isLoading = false; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Successfully registered! (Could not refresh counts)'),
-            backgroundColor: Colors.green,
-          ),
-        );
       }
     } else {
-      // It failed (e.g., "Capacity full")
       setState(() { _isLoading = false; });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -83,7 +74,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // --- 4. READ FROM THE LOCAL _currentEvent, NOT widget.event ---
     final String formattedDate = DateFormat('E, MMM d, yyyy • h:mm a').format(_currentEvent.startTime);
     final String formattedEndTime = DateFormat('h:mm a').format(_currentEvent.endTime);
 
@@ -93,8 +83,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          // --- 5. FIX NAVIGATOR.POP TO PASS BACK 'TRUE' ---
-          onPressed: () => Navigator.of(context).pop(true), // Send 'true' to refresh dashboard
+          onPressed: () => Navigator.of(context).pop(true), 
         ),
         title: const Text('Event Details', style: TextStyle(color: Colors.black)),
       ),
@@ -112,7 +101,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 return Container(
                   height: 250,
                   color: Colors.grey[200],
-                  child: Icon(Icons.broken_image, color: Colors.grey, size: 60),
+                  child: const Icon(Icons.broken_image, color: Colors.grey, size: 60),
                 );
               },
             ),
@@ -156,7 +145,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   
-                  // These numbers will now update instantly
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -173,24 +161,28 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                   const SizedBox(height: 24),
                   
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleRegisterOrJoin, // Wired up
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade700,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  // --- 3. HIDE JOIN BUTTON FOR ADMINS ---
+                  if (!_isAdmin) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleRegisterOrJoin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              _buttonText, 
+                              style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
                       ),
-                      child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                            _buttonText, // Use the state variable
-                            style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ],
+                  // -------------------------------------
                   
                   SizedBox(
                     width: double.infinity,

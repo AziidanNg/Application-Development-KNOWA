@@ -15,6 +15,7 @@ from donations.models import Donation, DonationStatus
 from .models import Notification
 from .serializers import NotificationSerializer
 from .utils import send_notification
+from events.models import Event, Meeting
 
 #
 # --- This is your RegistrationView ---
@@ -69,7 +70,7 @@ class ApproveForMembershipView(APIView):
             )
             user.member_status = User.MemberStatus.APPROVED_UNPAID # This flow is correct
             user.save()
-            
+
             send_notification(
             user, 
             "Membership Application Approved", 
@@ -406,6 +407,8 @@ class AdminDashboardStatsView(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
     
+# users/views.py
+
 class MyScheduleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -413,49 +416,71 @@ class MyScheduleView(APIView):
         schedule = []
         user = request.user
 
-        # --- FIX: USE COMPLEX FILTER (Q) ---
-        # Show interview if user is: Applicant OR Scheduler OR Interviewer
+        # 1. Interviews (No changes)
         interviews = Interview.objects.filter(
             Q(applicant=user) | Q(scheduler=user) | Q(interviewer=user),
             status='SCHEDULED'
         )
-        # -----------------------------------
-
-        for interview in interviews:
-            # Logic to determine the title based on who is viewing
+        for i in interviews:
             title = "Interview"
-            
-            if user == interview.applicant:
-                # If I am the applicant, show who is interviewing me
-                interviewer_name = interview.interviewer.first_name if interview.interviewer else (interview.scheduler.first_name if interview.scheduler else 'Admin')
+            if user == i.applicant:
+                interviewer_name = i.interviewer.first_name if i.interviewer else (i.scheduler.first_name if i.scheduler else 'Admin')
                 title = f"Interview with {interviewer_name}"
             else:
-                # If I am the Admin/Staff, show who I am interviewing
-                title = f"Interview: {interview.applicant.first_name}"
+                title = f"Interview: {i.applicant.first_name}"
 
             schedule.append({
-                'id': interview.id,
+                'id': i.id,
                 'title': title,
-                'date': interview.date_time.date(), # Returns YYYY-MM-DD
-                'time': interview.date_time.strftime("%I:%M %p"), # e.g. "10:00 AM"
+                'date': i.date_time.date(),
+                'time': i.date_time.strftime("%I:%M %p"),
                 'type': 'INTERVIEW',
-                'location': interview.meeting_link or interview.location
+                'location': i.location,
+                'meeting_link': i.meeting_link,
+                'description': 'Interview session',
             })
 
-        # 2. Fetch Joined Events (Logic remains the same)
-        events = Event.objects.filter(
-            participants=user, 
-            end_time__gte=timezone.now()
-        )
+        # --- 2. EVENTS (THE FIX IS HERE) ---
+        if user.is_staff:
+            # Admins see ALL events
+            events = Event.objects.all()
+        else:
+            # Regular users see events if they are:
+            # 1. A Participant
+            # 2. In the Crew (THIS WAS MISSING)
+            # 3. The Organizer
+            events = Event.objects.filter(
+                Q(participants=user) | Q(crew=user) | Q(organizer=user)
+            ).distinct()
 
-        for event in events:
+        for e in events:
             schedule.append({
-                'id': event.id,
-                'title': event.title,
-                'date': event.start_time.date(),
-                'time': event.start_time.strftime("%I:%M %p"),
+                'id': e.id,
+                'title': e.title,
+                'date': e.start_time.date(),
+                'time': e.start_time.strftime("%I:%M %p"),
                 'type': 'EVENT',
-                'location': event.location
+                'location': e.location,
+                'meeting_link': '', 
+                'description': e.description,
+            })
+        # --------------------------------
+
+        # 3. Meetings (No changes)
+        meetings = Meeting.objects.filter(Q(participants=user) | Q(organizer=user)).distinct()
+        for m in meetings:
+            loc = m.location if not m.is_online else "Online"
+            link = m.location if m.is_online else ""
+
+            schedule.append({
+                'id': m.id,
+                'title': m.title,
+                'date': m.start_time.date(),
+                'time': m.start_time.strftime("%I:%M %p"),
+                'type': 'MEETING',
+                'location': loc,
+                'meeting_link': link,
+                'description': m.description,
             })
 
         return Response(schedule, status=status.HTTP_200_OK)
@@ -502,3 +527,35 @@ class MarkNotificationReadView(APIView):
             return Response({'status': 'Marked as read'}, status=status.HTTP_200_OK)
         except Notification.DoesNotExist:
             return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+class UserSelectionListView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        # 1. Fetch distinct groups
+        admins = User.objects.filter(is_staff=True)
+        members = User.objects.filter(member_status=User.MemberStatus.MEMBER)
+        volunteers = User.objects.filter(member_status=User.MemberStatus.VOLUNTEER)
+
+        def format_user(u, role):
+            # Prioritize Full Name, fallback to username
+            name = u.get_full_name().strip() or u.first_name.strip() or u.username
+            return {'id': u.id, 'name': name, 'email': u.email, 'role': role}
+
+        results = []
+        # Add Admins
+        for u in admins:
+            results.append(format_user(u, 'ADMIN'))
+        
+        # Add Members (exclude if they are already added as admin)
+        admin_ids = [a.id for a in admins]
+        for u in members:
+            if u.id not in admin_ids:
+                results.append(format_user(u, 'MEMBER'))
+
+        # Add Volunteers
+        for u in volunteers:
+             if u.id not in admin_ids: # Safety check
+                results.append(format_user(u, 'VOLUNTEER'))
+
+        return Response(results, status=status.HTTP_200_OK)
