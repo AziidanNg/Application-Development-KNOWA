@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 import configparser
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -160,6 +161,19 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ]
+}
+
+SIMPLE_JWT = {
+    # This makes the user stay logged in for 30 days
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=30),
+    
+    # The refresh token lasts 60 days
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=60),
+    
+    # Security settings
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 # Settings for user-uploaded files (like profile pics or event photos)

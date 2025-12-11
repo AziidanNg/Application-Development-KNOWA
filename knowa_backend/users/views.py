@@ -455,7 +455,20 @@ class StaffListView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        # Get users who are staff or specific role
+        # Get users who are staff
         staff_members = User.objects.filter(is_staff=True)
-        data = [{'id': u.id, 'name': u.first_name or u.username} for u in staff_members]
+        
+        data = []
+        for u in staff_members:
+            # 1. PRIORITY: Use the First Name if it exists
+            if u.first_name and u.first_name.strip():
+                 display_name = u.first_name
+            
+            # 2. FALLBACK: Use username, but remove the email part (@gmail.com)
+            # This turns "knowahead01@gmail.com" into "knowahead01"
+            else:
+                display_name = u.username.split('@')[0]
+
+            data.append({'id': u.id, 'name': display_name})
+            
         return Response(data, status=status.HTTP_200_OK)
