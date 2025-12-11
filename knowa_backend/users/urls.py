@@ -18,7 +18,9 @@ from .views import (
     AdminDashboardStatsView,
     RejectPaymentView,
     MyScheduleView,
-    StaffListView
+    StaffListView,
+    NotificationListView,
+    MarkNotificationReadView
 )
 
 urlpatterns = [
@@ -56,4 +58,6 @@ urlpatterns = [
     path('admin/staff-list/', StaffListView.as_view(), name='staff-list'),
 
     path('my-schedule/', MyScheduleView.as_view(), name='my-schedule'),
+    path('notifications/', NotificationListView.as_view(), name='notifications'),
+    path('notifications/<int:pk>/read/', MarkNotificationReadView.as_view(), name='read-notification')
 ]

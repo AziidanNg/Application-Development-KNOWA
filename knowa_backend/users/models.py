@@ -138,3 +138,16 @@ class Interview(models.Model):
 
     def __str__(self):
         return f"Interview: {self.applicant.username} with {self.interviewer.username if self.interviewer else 'Admin'}"
+    
+class Notification(models.Model):
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Optional: To help frontend show different icons
+    notification_type = models.CharField(max_length=50, default='INFO') # INFO, SUCCESS, WARNING, ERROR
+
+    def __str__(self):
+        return f"Notification for {self.recipient.username}: {self.title}"

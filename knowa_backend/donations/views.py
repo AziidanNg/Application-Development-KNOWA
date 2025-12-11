@@ -7,19 +7,24 @@ from .serializers import DonationCreateSerializer, DonationAdminSerializer
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser
+from users.utils import notify_all_admins
 
 # 1. API for a user to CREATE a new donation
 class DonationCreateView(generics.CreateAPIView):
-    """
-    Allows any authenticated user to submit a donation (amount + receipt).
-    The donation is set to 'PENDING' by default.
-    """
-    permission_classes = [permissions.IsAuthenticated]
     serializer_class = DonationCreateSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        # Automatically assign the logged-in user to the donation
-        serializer.save(user=self.request.user)
+        # 1. First, save the donation
+        donation = serializer.save(user=self.request.user)
+
+        # 2. THEN send the notification (INSIDE this function)
+        # Import this at the top of the file: from users.utils import notify_all_admins
+        notify_all_admins(
+            "New Donation Received",
+            f"User {self.request.user.username} has submitted a donation of RM{donation.amount}. Please review the receipt.",
+            "INFO"
+        )
 
 # 2. API for an ADMIN to list PENDING donations
 class PendingDonationListView(generics.ListAPIView):

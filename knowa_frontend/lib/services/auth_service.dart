@@ -9,6 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:knowa_frontend/models/admin_stats.dart';
+import 'package:knowa_frontend/models/notification_item.dart';
 
 class AuthService {
   // Use 10.0.2.2 for the Android emulator to connect to your PC's localhost
@@ -483,6 +484,40 @@ Future<AdminStats> getAdminStats() async {
       return [];
     } catch (e) {
       return [];
+    }
+  }
+
+  // GET Notifications
+  Future<List<NotificationItem>> getNotifications() async {
+    final token = await _storage.read(key: 'access_token');
+    try {
+      final response = await http.get(
+        Uri.parse('${_baseUrl}notifications/'), // endpoint
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => NotificationItem.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // MARK READ
+  Future<void> markNotificationRead(int id) async {
+    final token = await _storage.read(key: 'access_token');
+    try {
+      await http.post(
+        Uri.parse('${_baseUrl}notifications/$id/read/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+    } catch (e) {
+      print(e);
     }
   }
 }

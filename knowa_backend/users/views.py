@@ -12,6 +12,9 @@ from django.utils import timezone
 from django.db.models import Sum, Q
 from events.models import Event
 from donations.models import Donation, DonationStatus
+from .models import Notification
+from .serializers import NotificationSerializer
+from .utils import send_notification
 
 #
 # --- This is your RegistrationView ---
@@ -66,6 +69,13 @@ class ApproveForMembershipView(APIView):
             )
             user.member_status = User.MemberStatus.APPROVED_UNPAID # This flow is correct
             user.save()
+            
+            send_notification(
+            user, 
+            "Membership Application Approved", 
+            "Congratulations! Your application has been approved. Please proceed to the dashboard to pay your membership fee.",
+            "SUCCESS"
+            )
             return Response({'status': 'User approved, awaiting payment.'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({'error': 'User not found or not pending/interview'}, status=status.HTTP_404_NOT_FOUND)
@@ -472,3 +482,23 @@ class StaffListView(APIView):
             data.append({'id': u.id, 'name': display_name})
             
         return Response(data, status=status.HTTP_200_OK)
+    
+class NotificationListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        # Show newest first
+        return Notification.objects.filter(recipient=self.request.user).order_by('-created_at')
+
+class MarkNotificationReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            notif = Notification.objects.get(pk=pk, recipient=request.user)
+            notif.is_read = True
+            notif.save()
+            return Response({'status': 'Marked as read'}, status=status.HTTP_200_OK)
+        except Notification.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)

@@ -11,6 +11,7 @@ import 'package:knowa_frontend/screens/payment_screen.dart';
 import 'package:knowa_frontend/services/donation_service.dart';
 import 'package:knowa_frontend/screens/donation_page.dart';
 import 'package:knowa_frontend/screens/fix_donation_screen.dart';
+import 'package:knowa_frontend/screens/notification_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -85,7 +86,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none_outlined, color: Colors.black),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const NotificationScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black),

@@ -7,6 +7,7 @@ from .models import Interview
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.core.exceptions import ValidationError # For password validation
 import re # For password validation
+from .models import Notification
 
 # --- SERIALIZER FOR USER PROFILE ---
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -173,3 +174,8 @@ class AdminUserSerializer(serializers.ModelSerializer):
             'application_type_display',# <-- This contains all the new application data
             'interview'
         ]
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'title', 'message', 'is_read', 'created_at', 'notification_type']
