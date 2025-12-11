@@ -19,7 +19,8 @@ from .views import (
     PendingPaymentListView,
     ConfirmPaymentView,
     AdminDashboardStatsView,
-    RejectPaymentView
+    RejectPaymentView,
+    MyScheduleView
 )
 # We no longer need the default TokenObtainPairView here
 
@@ -55,4 +56,6 @@ urlpatterns = [
     path('admin/pending-payments/', PendingPaymentListView.as_view(), name='pending-payments'),
     path('admin/confirm-payment/<int:pk>/', ConfirmPaymentView.as_view(), name='confirm-payment'),
     path('admin/reject-payment/<int:pk>/', RejectPaymentView.as_view(), name='reject-payment'),
+    
+    path('my-schedule/', MyScheduleView.as_view(), name='my-schedule'),
 ]

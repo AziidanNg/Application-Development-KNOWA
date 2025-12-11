@@ -2,8 +2,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics, permissions
-from .serializers import UserRegistrationSerializer, AdminUserSerializer, UserProfileSerializer
-from .models import User, UserProfile
+from .serializers import UserRegistrationSerializer, AdminUserSerializer, UserProfileSerializer, InterviewSerializer
+from .models import User, UserProfile, Interview
 from django.contrib.auth import authenticate # For checking passwords
 from django.core.mail import send_mail
 from django.conf import settings
@@ -364,3 +364,46 @@ class AdminDashboardStatsView(APIView):
             'monthly_donations': monthly_donations
         }
         return Response(data, status=status.HTTP_200_OK)
+    
+class MyScheduleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        schedule = []
+
+        # 1. Fetch Scheduled Interviews
+        # We want interviews where the user is the applicant AND status is SCHEDULED
+        interviews = Interview.objects.filter(
+            applicant=request.user,
+            status='SCHEDULED'
+        )
+
+        for interview in interviews:
+            schedule.append({
+                'id': interview.id,
+                'title': f"Interview: {interview.scheduler.first_name if interview.scheduler else 'Admin'}",
+                'date': interview.date_time.date(), # Returns YYYY-MM-DD
+                'time': interview.date_time.strftime("%I:%M %p"), # e.g. "10:00 AM"
+                'type': 'INTERVIEW',
+                'location': interview.meeting_link or interview.location
+            })
+
+        # 2. Fetch Joined Events
+        # Assuming Event model has a ManyToMany field 'participants'
+        # If your field is named 'attendees', change 'participants' below.
+        events = Event.objects.filter(
+            participants=request.user, 
+            end_time__gte=timezone.now() # Only future events
+        )
+
+        for event in events:
+            schedule.append({
+                'id': event.id,
+                'title': event.title,
+                'date': event.start_time.date(),
+                'time': event.start_time.strftime("%I:%M %p"),
+                'type': 'EVENT',
+                'location': event.location
+            })
+
+        return Response(schedule, status=status.HTTP_200_OK)

@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from .models import User
 from .models import UserProfile
+from .models import Interview
 # Import the default token serializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.core.exceptions import ValidationError # For password validation
@@ -142,11 +143,18 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         )
         return user
 
+class InterviewSerializer(serializers.ModelSerializer):
+    applicant_name = serializers.CharField(source='applicant.first_name', read_only=True)
+
+    class Meta:
+        model = Interview
+        fields = ['id', 'applicant', 'applicant_name', 'date_time', 'location', 'meeting_link', 'status']
+
 # --- REPLACE THE OLD AdminUserSerializer ---
 class AdminUserSerializer(serializers.ModelSerializer):
     # This "nests" the UserProfile data inside the User data
     profile = UserProfileSerializer(read_only=True)
-
+    interview = InterviewSerializer(read_only=True)
     application_type_display = serializers.CharField(source='profile.get_application_type_display', read_only=True)
 
     class Meta:
@@ -162,4 +170,5 @@ class AdminUserSerializer(serializers.ModelSerializer):
             'date_joined',
             'profile',
             'application_type_display',# <-- This contains all the new application data
+            'interview'
         ]

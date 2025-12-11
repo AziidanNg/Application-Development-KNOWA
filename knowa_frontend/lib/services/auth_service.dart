@@ -428,4 +428,29 @@ Future<AdminStats> getAdminStats() async {
     throw Exception('Connection failed: ${e.toString()}');
   }
 }
+
+// Fetch user's schedule (Interviews + Events)
+  Future<List<Map<String, dynamic>>> getMySchedule() async {
+    final token = await _storage.read(key: 'access_token');
+    try {
+      final response = await http.get(
+        Uri.parse('${_baseUrl}my-schedule/'), // Matches users/urls.py
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        // Cast to List<Map<String, dynamic>>
+        return List<Map<String, dynamic>>.from(data);
+      } else {
+        return [];
+      }
+    } catch (e) {
+      print("Error fetching schedule: $e");
+      return [];
+    }
+  }
 }

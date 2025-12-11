@@ -8,6 +8,7 @@ import random
 from django.utils import timezone
 import datetime
 
+
 class User(AbstractUser):
     
     # --- UPDATED CHOICES ---
@@ -114,3 +115,26 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
+    
+# --- NEW SMART CALENDAR MODEL ---
+class Interview(models.Model):
+    # Link to the applicant (Pending User)
+    applicant = models.OneToOneField(User, on_delete=models.CASCADE, related_name='interview')
+    
+    # Who scheduled it? (The Admin)
+    scheduler = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='scheduled_interviews')
+    
+    # When is it?
+    date_time = models.DateTimeField()
+    
+    # Where? (Google Meet, Zoom, or physical location)
+    location = models.CharField(max_length=255, default="Google Meet")
+    meeting_link = models.URLField(blank=True, null=True)
+    
+    # Status of the interview itself (Scheduled, Completed, Cancelled)
+    status = models.CharField(max_length=20, default='SCHEDULED')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Interview with {self.applicant.username} on {self.date_time}"
