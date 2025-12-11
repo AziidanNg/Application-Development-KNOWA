@@ -9,20 +9,17 @@ from .views import (
     InterviewUserView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
-
-    # --- IMPORT THE NEW 2FA VIEWS ---
     LoginRequestTACView,
     LoginVerifyTACView,
-
     SubmitApplicationView,
     UploadReceiptView,
     PendingPaymentListView,
     ConfirmPaymentView,
     AdminDashboardStatsView,
     RejectPaymentView,
-    MyScheduleView
+    MyScheduleView,
+    StaffListView
 )
-# We no longer need the default TokenObtainPairView here
 
 urlpatterns = [
     # --- Public User URLs ---
@@ -56,6 +53,7 @@ urlpatterns = [
     path('admin/pending-payments/', PendingPaymentListView.as_view(), name='pending-payments'),
     path('admin/confirm-payment/<int:pk>/', ConfirmPaymentView.as_view(), name='confirm-payment'),
     path('admin/reject-payment/<int:pk>/', RejectPaymentView.as_view(), name='reject-payment'),
-    
+    path('admin/staff-list/', StaffListView.as_view(), name='staff-list'),
+
     path('my-schedule/', MyScheduleView.as_view(), name='my-schedule'),
 ]

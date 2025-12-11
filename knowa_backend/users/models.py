@@ -98,6 +98,8 @@ class UserProfile(models.Model):
         blank=True, null=True # Allows it to be blank until they apply
     )
 
+    application_date = models.DateTimeField(null=True, blank=True)
+
     # --- Background Fields (from image_1b2dc9.png) ---
     education = models.CharField(max_length=255, blank=True, null=True)
     occupation = models.CharField(max_length=255, blank=True, null=True)
@@ -118,23 +120,21 @@ class UserProfile(models.Model):
     
 # --- NEW SMART CALENDAR MODEL ---
 class Interview(models.Model):
-    # Link to the applicant (Pending User)
-    applicant = models.OneToOneField(User, on_delete=models.CASCADE, related_name='interview')
+    # The Applicant
+    applicant = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='interview')
     
-    # Who scheduled it? (The Admin)
-    scheduler = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='scheduled_interviews')
+    # The Admin who clicked the button (Scheduler)
+    scheduler = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='scheduled_interviews')
+
+    # --- NEW: The Staff Member conducting the interview ---
+    interviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='assigned_interviews')
+    # ----------------------------------------------------
     
-    # When is it?
     date_time = models.DateTimeField()
-    
-    # Where? (Google Meet, Zoom, or physical location)
     location = models.CharField(max_length=255, default="Google Meet")
     meeting_link = models.URLField(blank=True, null=True)
-    
-    # Status of the interview itself (Scheduled, Completed, Cancelled)
     status = models.CharField(max_length=20, default='SCHEDULED')
-    
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Interview with {self.applicant.username} on {self.date_time}"
+        return f"Interview: {self.applicant.username} with {self.interviewer.username if self.interviewer else 'Admin'}"

@@ -281,10 +281,10 @@ Future<List<PendingUser>> getPendingUsers() async {
 // --- ADMIN: UPDATE USER STATUS ---
 // This one function will handle approve, reject, and interview
 // It now accepts 'APPROVE_MEMBER' and 'APPROVE_VOLUNTEER'
-Future<bool> updateUserStatus(int userId, String action, {String? reason}) async {
+Future<bool> updateUserStatus(int userId, String action, {String? reason, String? date, String? link, int? staffId}) async {
     final token = await _storage.read(key: 'access_token');
     
-    // Determine the correct endpoint based on action
+    // 1. Determine the endpoint
     String endpoint = '';
     if (action == 'APPROVE_MEMBER') {
       endpoint = 'admin/approve-member/$userId/';
@@ -292,21 +292,34 @@ Future<bool> updateUserStatus(int userId, String action, {String? reason}) async
       endpoint = 'admin/approve-volunteer/$userId/';
     } else if (action == 'REJECT') {
       endpoint = 'admin/reject/$userId/';
-    } else if (action == 'INTERVIEW') {
+    } else if (action == 'INTERVIEW') { // Removed '&& date != null' check here to be safe
       endpoint = 'admin/interview/$userId/';
     }
+
+    // 2. Build the Body Data dynamically
+    Map<String, dynamic> bodyData = {};
+
+    if (action == 'REJECT' && reason != null) {
+      bodyData['reason'] = reason;
+    }
+    
+    // --- THIS WAS MISSING ---
+    if (action == 'INTERVIEW') {
+      if (date != null) bodyData['date_time'] = date;
+      if (link != null) bodyData['meeting_link'] = link;
+      if (staffId != null) bodyData['interviewer_id'] = staffId;
+    }
+    // ------------------------
 
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl$endpoint'),
         headers: {
-          'Content-Type': 'application/json', // Important for sending JSON
+          'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        // Only send body if we have a reason (for rejection)
-        body: (action == 'REJECT' && reason != null) 
-            ? jsonEncode({'reason': reason}) 
-            : null,
+        // 3. Send the JSON if we have any data to send
+        body: bodyData.isNotEmpty ? jsonEncode(bodyData) : null,
       );
 
       return response.statusCode == 200;
@@ -450,6 +463,25 @@ Future<AdminStats> getAdminStats() async {
       }
     } catch (e) {
       print("Error fetching schedule: $e");
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getStaffList() async {
+    final token = await _storage.read(key: 'access_token');
+    try {
+      final response = await http.get(
+        Uri.parse('${_baseUrl}admin/staff-list/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      }
+      return [];
+    } catch (e) {
       return [];
     }
   }

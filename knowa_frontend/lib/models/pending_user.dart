@@ -27,9 +27,9 @@ class PendingUser {
       phone: json['phone'] ?? 'N/A',
       memberStatus: json['member_status'] ?? 'PENDING',
       // 3. PARSE THE DATE (Default to now if missing)
-      dateJoined: json['date_joined'] != null 
-          ? DateTime.parse(json['date_joined']) 
-          : DateTime.now(),
+      dateJoined: json['application_date'] != null 
+          ? DateTime.parse(json['application_date']) 
+          : DateTime.now(), // Fallback to now if null
       profile: UserProfile.fromJson(json['profile'] ?? {}),
     );
   }

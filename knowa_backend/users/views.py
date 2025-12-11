@@ -119,13 +119,38 @@ class InterviewUserView(APIView):
 
     def post(self, request, pk, format=None):
         try:
-            # You can only move a user to Interview from Pending
-            user = User.objects.get(pk=pk, member_status=User.MemberStatus.PENDING)
-            user.member_status = User.MemberStatus.INTERVIEW # Change status to INTERVIEW
+            user = User.objects.get(pk=pk)
+            user.member_status = User.MemberStatus.INTERVIEW
             user.save()
+
+            date_time = request.data.get('date_time')
+            meeting_link = request.data.get('meeting_link', '')
+            
+            # --- NEW: Get the selected staff ID ---
+            interviewer_id = request.data.get('interviewer_id') 
+            interviewer = None
+            if interviewer_id:
+                try:
+                    interviewer = User.objects.get(pk=interviewer_id)
+                except User.DoesNotExist:
+                    pass # Fallback to None (or scheduler)
+            # --------------------------------------
+
+            if date_time:
+                Interview.objects.update_or_create(
+                    applicant=user,
+                    defaults={
+                        'scheduler': request.user,   # The Admin who clicked
+                        'interviewer': interviewer,  # The Staff chosen
+                        'date_time': date_time,
+                        'meeting_link': meeting_link,
+                        'status': 'SCHEDULED'
+                    }
+                )
+            
             return Response({'status': 'User set for interview'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
-            return Response({'error': 'Pending user not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         
 # 1. This view handles the INITIAL login (username + password)
 # It sends the 2FA code via email.
@@ -257,10 +282,16 @@ class SubmitApplicationView(generics.UpdateAPIView):
         # --- THIS IS THE KEY ---
         # After saving, change the user's status to PENDING
         user = self.request.user
+        user = self.request.user
         if user.member_status == User.MemberStatus.PUBLIC:
             user.member_status = User.MemberStatus.PENDING
+            
+            # --- Set the application date to NOW ---
+            user.profile.application_date = timezone.now()
+            user.profile.save()
+            # --------------------------------------------
+            
             user.save()
-
 # --- ADD THESE NEW PAYMENT FLOW VIEWS ---
 
 # 5. View for a user to upload their payment receipt
@@ -370,30 +401,41 @@ class MyScheduleView(APIView):
 
     def get(self, request):
         schedule = []
+        user = request.user
 
-        # 1. Fetch Scheduled Interviews
-        # We want interviews where the user is the applicant AND status is SCHEDULED
+        # --- FIX: USE COMPLEX FILTER (Q) ---
+        # Show interview if user is: Applicant OR Scheduler OR Interviewer
         interviews = Interview.objects.filter(
-            applicant=request.user,
+            Q(applicant=user) | Q(scheduler=user) | Q(interviewer=user),
             status='SCHEDULED'
         )
+        # -----------------------------------
 
         for interview in interviews:
+            # Logic to determine the title based on who is viewing
+            title = "Interview"
+            
+            if user == interview.applicant:
+                # If I am the applicant, show who is interviewing me
+                interviewer_name = interview.interviewer.first_name if interview.interviewer else (interview.scheduler.first_name if interview.scheduler else 'Admin')
+                title = f"Interview with {interviewer_name}"
+            else:
+                # If I am the Admin/Staff, show who I am interviewing
+                title = f"Interview: {interview.applicant.first_name}"
+
             schedule.append({
                 'id': interview.id,
-                'title': f"Interview: {interview.scheduler.first_name if interview.scheduler else 'Admin'}",
+                'title': title,
                 'date': interview.date_time.date(), # Returns YYYY-MM-DD
                 'time': interview.date_time.strftime("%I:%M %p"), # e.g. "10:00 AM"
                 'type': 'INTERVIEW',
                 'location': interview.meeting_link or interview.location
             })
 
-        # 2. Fetch Joined Events
-        # Assuming Event model has a ManyToMany field 'participants'
-        # If your field is named 'attendees', change 'participants' below.
+        # 2. Fetch Joined Events (Logic remains the same)
         events = Event.objects.filter(
-            participants=request.user, 
-            end_time__gte=timezone.now() # Only future events
+            participants=user, 
+            end_time__gte=timezone.now()
         )
 
         for event in events:
@@ -407,3 +449,13 @@ class MyScheduleView(APIView):
             })
 
         return Response(schedule, status=status.HTTP_200_OK)
+
+#VIEW: Get list of staff members
+class StaffListView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        # Get users who are staff or specific role
+        staff_members = User.objects.filter(is_staff=True)
+        data = [{'id': u.id, 'name': u.first_name or u.username} for u in staff_members]
+        return Response(data, status=status.HTTP_200_OK)

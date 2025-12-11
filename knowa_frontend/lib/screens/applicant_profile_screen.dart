@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:knowa_frontend/models/pending_user.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 
 class ApplicantProfileScreen extends StatefulWidget {
   final PendingUser user;
@@ -17,13 +18,11 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
   final AuthService _authService = AuthService();
   bool _isLoading = false;
 
-  // --- 1. NEW LOGIC TO UPDATE USER (Same as Manage Applications) ---
-  void _updateUser(String action, {String? reason}) async {
+  void _updateUser(String action, {String? reason, String? date, String? link, int? staffId}) async {
     setState(() { _isLoading = true; });
 
     String finalAction = action;
     
-    // Map the friendly action name to the API action name
     if (action == 'Approve') {
       finalAction = widget.user.profile.applicationType == 'MEMBERSHIP' 
           ? 'APPROVE_MEMBER' 
@@ -34,11 +33,13 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
       finalAction = 'INTERVIEW';
     }
 
-    // Call the API
     bool success = await _authService.updateUserStatus(
-      widget.user.id, 
-      finalAction, 
-      reason: reason
+       widget.user.id, 
+       finalAction, 
+       reason: reason,
+       date: date,
+       link: link,
+       staffId: staffId 
     );
 
     setState(() { _isLoading = false; });
@@ -51,12 +52,11 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
         ),
       );
       if (success) {
-        Navigator.pop(context, true); // Go back and refresh list
+        Navigator.pop(context, true); 
       }
     }
   }
 
-  // --- 2. NEW DIALOG FOR REJECTION ---
   void _showRejectDialog() {
     String selectedReason = 'Not suitable';
     
@@ -105,8 +105,8 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () {
-                Navigator.pop(context); // Close dialog
-                _updateUser('Reject', reason: selectedReason); // Call update with reason
+                Navigator.pop(context);
+                _updateUser('Reject', reason: selectedReason);
               },
               child: const Text('Reject & Notify'),
             ),
@@ -117,10 +117,6 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
   }
 
   void _launchFile(String? fileUrl) async {
-    // 1. Debug Print: Check what URL is actually coming through
-    print("Trying to open: $fileUrl"); 
-
-    // 2. Check if empty (Give feedback like the donation screen does)
     if (fileUrl == null || fileUrl.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
          const SnackBar(content: Text('No document was uploaded.'), backgroundColor: Colors.orange),
@@ -130,7 +126,6 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
 
     final Uri url = Uri.parse(fileUrl);
 
-    // 3. Use platformDefault exactly like your working screen
     if (!await launchUrl(url, mode: LaunchMode.platformDefault)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -140,9 +135,223 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
     }
   }
 
+  // --- NEW: SEARCHABLE STAFF SELECTION DIALOG ---
+  void _showStaffSelectionDialog(
+      List<Map<String, dynamic>> staffList,
+      Function(int? staffId) onStaffSelected,
+      int? currentStaffId,
+      Function(VoidCallback fn) setDialogState,
+  ) {
+    String searchText = '';
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Select Interviewer'),
+          content: StatefulBuilder(
+            builder: (context, setInnerDialogState) {
+              // Filter logic
+              final filteredStaff = staffList.where((staff) {
+                final name = staff['name'].toString().toLowerCase();
+                return name.contains(searchText.toLowerCase());
+              }).toList();
+              
+              return SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Search Bar
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Search Staff Name',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setInnerDialogState(() {
+                          searchText = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    // Staff List
+                    Expanded(
+                      child: filteredStaff.isEmpty 
+                        ? const Center(child: Text("No staff found"))
+                        : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: filteredStaff.length,
+                          itemBuilder: (context, index) {
+                            final staff = filteredStaff[index];
+                            final isSelected = currentStaffId == staff['id'];
+                            return ListTile(
+                              title: Text(staff['name']),
+                              tileColor: isSelected ? Colors.blue.shade50 : null,
+                              trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : null,
+                              onTap: () {
+                                setDialogState(() {
+                                  onStaffSelected(staff['id']);
+                                });
+                                Navigator.pop(context); // Close search dialog
+                              },
+                            );
+                          },
+                        ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // --- UPDATED: SCHEDULE DIALOG WITH SEARCH ---
+  void _showScheduleDialog() async {
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
+    String meetingLink = 'https://meet.google.com/abc-defg-hij';
+    
+    // Fetch Staff List
+    List<Map<String, dynamic>> staffList = await _authService.getStaffList();
+    int? selectedStaffId; 
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Schedule Interview'),
+          content: StatefulBuilder(
+            builder: (context, setDialogState) {
+              // Helper to get display name for the box
+              String staffNameDisplay = selectedStaffId != null 
+                  ? staffList.firstWhere((s) => s['id'] == selectedStaffId, orElse: () => {'name': 'Unknown'})['name']
+                  : 'Select Staff *';
+
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Select Date, Time & Interviewer:'),
+                    const SizedBox(height: 16),
+                    
+                    // --- SEARCHABLE STAFF BUTTON (Replaces Dropdown) ---
+                    InkWell(
+                      onTap: () => _showStaffSelectionDialog(
+                        staffList, 
+                        (id) => selectedStaffId = id, 
+                        selectedStaffId, 
+                        setDialogState
+                      ),
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Assign Interviewer',
+                          border: const OutlineInputBorder(),
+                          errorText: selectedStaffId == null ? 'Please select an interviewer' : null,
+                          prefixIcon: const Icon(Icons.person),
+                        ),
+                        child: Text(
+                          staffNameDisplay,
+                          style: TextStyle(
+                            color: selectedStaffId == null ? Colors.grey : Colors.black,
+                            fontWeight: selectedStaffId != null ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    // --------------------------------------------------
+                    const SizedBox(height: 16),
+
+                    // Date Picker
+                    ListTile(
+                      title: Text("Date: ${DateFormat('yyyy-MM-dd').format(selectedDate)}"),
+                      trailing: const Icon(Icons.calendar_today),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime.now(), // Future Dates Only
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null) setDialogState(() => selectedDate = picked);
+                      },
+                    ),
+
+                    // Time Picker
+                    ListTile(
+                      title: Text("Time: ${selectedTime.format(context)}"),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                          initialEntryMode: TimePickerEntryMode.dial,
+                        );
+                        if (picked != null) setDialogState(() => selectedTime = picked);
+                      },
+                    ),
+                    
+                    // Link Input
+                    TextField(
+                      decoration: const InputDecoration(labelText: 'Meeting Link'),
+                      controller: TextEditingController(text: meetingLink),
+                      onChanged: (val) => meetingLink = val,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Manual Validation for Staff Selection
+                if (selectedStaffId == null) {
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an interviewer')));
+                   return;
+                }
+
+                final finalDateTime = DateTime(
+                  selectedDate.year, selectedDate.month, selectedDate.day,
+                  selectedTime.hour, selectedTime.minute
+                );
+                
+                Navigator.pop(context);
+                
+                _updateUser(
+                  'Interview', 
+                  date: finalDateTime.toIso8601String(), 
+                  link: meetingLink,
+                  staffId: selectedStaffId 
+                );
+              },
+              child: const Text('Schedule'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Helper to extract profile data
     final profile = widget.user.profile;
 
     return Scaffold(
@@ -190,16 +399,13 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
             ),
             const SizedBox(height: 32),
 
-            // --- INFO SECTION ---
+            // Info Section
             const Text('Applicant Information', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             _buildInfoRow('Name', widget.user.firstName),
             _buildInfoRow('Email', widget.user.email),
             _buildInfoRow('Phone', widget.user.phone),
-            
-            // --- 3. SHOW IC NUMBER HERE ---
             _buildInfoRow('IC Number', profile.icNumber), 
-            // -----------------------------
             
             const SizedBox(height: 32),
             const Text('Background', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -241,7 +447,6 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
 
             const SizedBox(height: 40),
             
-            // --- ACTION BUTTONS ---
             const Divider(),
             const SizedBox(height: 16),
             Row(
@@ -249,11 +454,9 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
               children: [
                 _buildActionButton('Approve', Colors.green, () => _updateUser('Approve')),
                 
-                // --- 4. CONNECT REJECT TO DIALOG ---
                 _buildActionButton('Reject', Colors.red, _showRejectDialog),
-                // ----------------------------------
                 
-                _buildActionButton('Interview', Colors.blue, () => _updateUser('Interview')),
+                _buildActionButton('Interview', Colors.blue, _showScheduleDialog),
               ],
             ),
           ],

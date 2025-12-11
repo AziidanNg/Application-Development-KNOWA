@@ -156,6 +156,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
     interview = InterviewSerializer(read_only=True)
     application_type_display = serializers.CharField(source='profile.get_application_type_display', read_only=True)
+    application_date = serializers.DateTimeField(source='profile.application_date', read_only=True)
 
     class Meta:
         model = User
@@ -167,7 +168,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
             'phone',
             'interests',
             'member_status', 
-            'date_joined',
+            'application_date',
             'profile',
             'application_type_display',# <-- This contains all the new application data
             'interview'
