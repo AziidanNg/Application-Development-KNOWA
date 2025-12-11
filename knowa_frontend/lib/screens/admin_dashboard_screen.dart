@@ -6,10 +6,10 @@ import 'package:knowa_frontend/screens/admin_manage_applications_screen.dart';
 import 'package:knowa_frontend/screens/admin_pending_payments_screen.dart';
 import 'package:knowa_frontend/screens/admin_pending_donations_screen.dart';
 import 'package:knowa_frontend/screens/admin_manage_events_screen.dart';
-import 'package:knowa_frontend/models/admin_stats.dart'; // <-- 1. IMPORT YOUR NEW MODEL
-import 'package:intl/intl.dart'; // For formatting the currency
+import 'package:knowa_frontend/models/admin_stats.dart'; 
+import 'package:knowa_frontend/screens/notification_screen.dart'; // <--- 1. IMPORT THIS
+import 'package:intl/intl.dart'; 
 
-// --- 2. CONVERT TO STATEFULWIDGET ---
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -19,14 +19,12 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
-  // --- 3. ADD SERVICE AND FUTURE ---
   final AuthService _authService = AuthService();
   late Future<AdminStats> _statsFuture;
 
   @override
   void initState() {
     super.initState();
-    // Load the stats when the screen is first built
     _statsFuture = _authService.getAdminStats();
   }
 
@@ -42,15 +40,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Formatter for RM 5,500
     final currencyFormatter = NumberFormat.currency(locale: 'en_MY', symbol: 'RM');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: const Text('Admin Dashboard', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // --- 2. ADD NOTIFICATION BUTTON HERE ---
+          IconButton(
+            icon: const Icon(Icons.notifications_none_outlined, color: Colors.black),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const NotificationScreen()),
+              );
+            },
+          ),
+          // ---------------------------------------
+          
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black),
             onPressed: () => _handleLogout(context),
@@ -69,12 +77,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 24),
 
-            // --- 4. USE A FUTUREBUILDER TO WRAP THE STATS ---
             FutureBuilder<AdminStats>(
               future: _statsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  // Show a loading state for all 4 cards
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
@@ -84,10 +90,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   return const Center(child: Text('No stats found.'));
                 }
 
-                // We have data!
                 final stats = snapshot.data!;
 
-                // --- 5. BUILD THE GRID WITH REAL DATA ---
                 return GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
@@ -98,25 +102,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     _buildStatCard(
                       'Total Members', 
                       stats.totalMembers.toString(), 
-                      '+10%', // (We'll make this dynamic later)
+                      '+10%', 
                       Colors.green
                     ),
                     _buildStatCard(
                       'Pending Applications', 
                       stats.pendingApplications.toString(), 
-                      '-5%', // (Placeholder)
+                      '-5%', 
                       Colors.red
                     ),
                     _buildStatCard(
                       'Active Events', 
                       stats.activeEvents.toString(), 
-                      '+20%', // (Placeholder)
+                      '+20%', 
                       Colors.green
                     ),
                     _buildStatCard(
                       'Monthly Donations', 
-                      currencyFormatter.format(stats.monthlyDonations), // Use the formatter
-                      '+15%', // (Placeholder)
+                      currencyFormatter.format(stats.monthlyDonations), 
+                      '+15%', 
                       Colors.green
                     ),
                   ],
@@ -131,7 +135,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ... (Rest of your quick action buttons) ...
             _buildActionButton(
               title: 'Member Applications',
               onPressed: () { 
@@ -182,7 +185,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // Helper widget for the stat cards
   Widget _buildStatCard(String title, String value, String change, Color changeColor) {
     return Card(
       elevation: 2.0,
@@ -204,7 +206,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // Helper widget for the action buttons
   Widget _buildActionButton({required String title, required VoidCallback onPressed, bool isPrimary = false}) {
     return SizedBox(
       width: double.infinity,
