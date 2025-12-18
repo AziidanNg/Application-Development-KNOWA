@@ -446,29 +446,59 @@ class AIChatbotView(APIView):
             return Response({'error': 'Message is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # DEBUG PRINT: Check if key is loaded
-            print(f"DEBUG: Using API Key: {settings.GEMINI_API_KEY[:5]}...") 
+            # --- 1. FETCH REAL DATA (Dynamic Context) ---
+            upcoming_events = Event.objects.filter(
+                status='PUBLISHED',
+                start_time__gte=timezone.now()
+            ).order_by('start_time')[:3]
 
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel('gemini-2.5-flash')
+            events_context = "UPCOMING EVENTS:\n"
+            if upcoming_events.exists():
+                for event in upcoming_events:
+                    date_str = event.start_time.strftime('%b %d, %I:%M %p')
+                    events_context += f"- {event.title} on {date_str} ({event.location})\n"
+            else:
+                events_context += "No upcoming events found.\n"
 
-            context = (
-                "You are the helpful AI assistant for KNOWA. "
-                "Keep answers short. "
-                f"User asked: {user_message}"
+
+            # --- 2. DEFINE APP KNOWLEDGE (Static FAQ Context) ---
+            # This teaches the AI how to use the app
+            app_manual = (
+                "APP INSTRUCTIONS (KNOWA MANUAL):\n"
+                "1. REGISTRATION: To create an account, click 'Sign Up' on the Login screen. You must fill in your profile details.\n"
+                "2. MEMBERSHIP: After registering, your status is 'Pending'. An Admin must approve you. Once approved, you can pay fees to become a 'Member'.\n"
+                "3. DONATIONS: Go to the Dashboard and click the blue 'Donate' button. You can donate via credit card or online banking.\n"
+                "4. EVENTS: Go to the 'Events' tab (Ticket Icon) to see activities. Click an event to view details. If it is Online, the location is a Zoom/Meet link.\n"
+                "5. MEETINGS: Only Admins can create meetings. You will see them in your 'Calendar' tab.\n"
+                "6. FORGOT PASSWORD: Click 'Forgot Password?' on the login screen. We will email you a 6-digit TAC code to reset it.\n"
+                "7. PROFILE: Click the 'Profile' tab (Person Icon) to edit your phone number or view your membership status.\n"
             )
 
-            # DEBUG PRINT: Sending request
-            print("DEBUG: Sending request to Google...")
-            
-            response = model.generate_content(context)
-            
-            # DEBUG PRINT: Success
-            print("DEBUG: Success!")
-            
+            # --- 3. CONFIGURE AI ---
+            api_key = getattr(settings, 'GEMINI_API_KEY', None)
+            if not api_key:
+                return Response({'error': 'Missing API Key'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+
+            # --- 4. COMBINE EVERYTHING INTO THE PROMPT ---
+            full_prompt = (
+                "You are the helpful, friendly AI support assistant for the KNOWA app. "
+                "Use the manual and event data below to answer the user's question accurately. "
+                "If the answer is in the manual, explain it clearly. "
+                "If the user asks about events, list the real events provided below. "
+                "If you don't know the answer, say 'I'm not sure, please contact admin@knowa.org'.\n\n"
+                f"{app_manual}\n"
+                "---------------------\n"
+                f"{events_context}\n"
+                "---------------------\n"
+                f"USER QUESTION: {user_message}"
+            )
+
+            # --- 5. GENERATE & RETURN ---
+            response = model.generate_content(full_prompt)
             return Response({'reply': response.text}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # DEBUG PRINT: The actual error
-            print(f"CRITICAL ERROR: {str(e)}") 
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

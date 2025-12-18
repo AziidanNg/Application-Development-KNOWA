@@ -13,9 +13,11 @@ import os
 import configparser
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 config = configparser.ConfigParser()
 config.read(os.path.join(BASE_DIR, 'my.cnf'))
@@ -191,4 +193,4 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_HOST_USER = EMAIL_HOST_USER
 EMAIL_HOST_PASSWORD = EMAIL_HOST_PASSWORD
 
-GEMINI_API_KEY = "AIzaSyA0mCnJ6dTB58WTf5UNi1Ek5oyHIvMdhvY"
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
