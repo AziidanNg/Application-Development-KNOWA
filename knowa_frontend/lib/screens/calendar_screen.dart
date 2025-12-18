@@ -392,12 +392,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 color: Colors.blue.withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
-              markerDecoration: const BoxDecoration(
-                color: Colors.orange,
-                shape: BoxShape.circle,
+            ),
+              calendarBuilders: CalendarBuilders(
+                markerBuilder: (context, date, events) {
+                  if (events.isEmpty) return const SizedBox();
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: events.take(3).map((event) { // Limit to 3 dots to prevent overflow
+                      // Cast event to Map to access data
+                      final data = event as Map<String, dynamic>;
+                      Color dotColor = Colors.blue; // Default (Event)
+
+                      if (data['type'] == 'INTERVIEW') {
+                        dotColor = Colors.orange;
+                      } else if (data['type'] == 'MEETING') {
+                        dotColor = Colors.purple;
+                      }
+
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                        decoration: BoxDecoration(
+                          color: dotColor,
+                          shape: BoxShape.circle,
+                        ),
+                        width: 7.0,
+                        height: 7.0,
+                      );
+                    }).toList(),
+                  );
+                },
               ),
             ),
-          ),
           const SizedBox(height: 20),
           
           // Selected Date Title

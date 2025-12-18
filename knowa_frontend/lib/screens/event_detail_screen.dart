@@ -117,10 +117,39 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   
                   InkWell(
                     onTap: () async {
-                      final query = Uri.encodeComponent(_currentEvent.location);
-                      final url = Uri.parse('http://googleusercontent.com/maps.google.com/search/?api=1&query=$query');
-                      if (await canLaunchUrl(url)) {
-                        await launchUrl(url);
+                      final String location = _currentEvent.location.trim(); // Remove extra spaces
+                      
+                      // 1. Check if it is a valid web link (must start with http/https)
+                      final bool isValidUrl = location.startsWith('http') || location.startsWith('https');
+
+                      if (isValidUrl) {
+                        // --- OPEN BROWSER (Zoom/Meet) ---
+                        final Uri url = Uri.parse(location);
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, mode: LaunchMode.externalApplication);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Could not open this link.")),
+                          );
+                        }
+                      } else if (!_currentEvent.isOnline) {
+                        // --- OPEN GOOGLE MAPS (Only if NOT Online) ---
+                        // If it's offline, we assume it's a physical address
+                        final query = Uri.encodeComponent(location);
+                        final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+                        
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, mode: LaunchMode.externalApplication);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Could not open Maps.")),
+                          );
+                        }
+                      } else {
+                        // --- IT IS ONLINE BUT NO LINK PROVIDED ---
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("No meeting link provided for this event.")),
+                        );
                       }
                     },
                     child: Padding(

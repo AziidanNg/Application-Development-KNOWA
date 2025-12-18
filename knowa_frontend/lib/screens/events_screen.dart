@@ -265,13 +265,24 @@ class _EventsScreenState extends State<EventsScreen> {
                         style: TextStyle(color: Colors.grey[600], fontSize: 13),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        event.isOnline ? 'Online' : event.location,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Icon(
+                            event.isOnline ? Icons.videocam_outlined : Icons.location_on_outlined,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              event.location, // <--- Now it shows the actual link/address
+                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
                       
                       // "Join" Button (Visual only - action is on Tap)
                       SizedBox(
