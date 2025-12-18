@@ -1,5 +1,6 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:knowa_frontend/screens/splash_screen.dart';
 import 'package:knowa_frontend/screens/login_screen.dart'; 
 import 'package:knowa_frontend/widgets/global_chatbot.dart'; 
 
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const AppRootWrapper(child: LoginScreen()),
+      home: const SplashScreen(),
     );
   }
 }

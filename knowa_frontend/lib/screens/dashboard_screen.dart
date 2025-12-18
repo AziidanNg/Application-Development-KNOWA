@@ -12,6 +12,7 @@ import 'package:knowa_frontend/services/donation_service.dart';
 import 'package:knowa_frontend/screens/donation_page.dart';
 import 'package:knowa_frontend/screens/fix_donation_screen.dart';
 import 'package:knowa_frontend/screens/notification_screen.dart';
+import 'package:knowa_frontend/main.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -55,7 +56,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await _authService.logout();
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(
+          builder: (context) => const AppRootWrapper(child: LoginScreen()),
+        ),
         (Route<dynamic> route) => false,
       );
     }

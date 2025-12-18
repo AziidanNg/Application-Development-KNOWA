@@ -40,7 +40,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _checkAdminStatus() async {
     final userData = await _authService.getUserData();
-    if (mounted) {
+    if (userData != null) {
       setState(() {
         _isAdmin = userData['is_staff'] ?? false;
       });
@@ -129,7 +129,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final eventObj = await eventService.getEventDetails(id);
         final userData = await _authService.getUserData();
         
-        if (mounted) {
+        if (userData != null && mounted) { 
           setState(() { _isLoading = false; });
           Navigator.push(
             context,

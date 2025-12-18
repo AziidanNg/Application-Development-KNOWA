@@ -118,8 +118,22 @@ class AuthService {
   }
 
   // --- ADD THIS NEW FUNCTION ---
-  Future<Map<String, dynamic>> getUserData() async {
+  // Change return type to nullable Map
+  Future<Map<String, dynamic>?> getUserData() async {
+    
+    // 1. CRITICAL: Check if the token actually exists in secure storage
+    final token = await _storage.read(key: 'access_token');
+    
+    // If no token is found, return null immediately. 
+    // This tells SplashScreen to go to Login, not Dashboard.
+    if (token == null) return null; 
+
+    // 2. If token exists, fetch the saved user details
     final SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Double-check: If we logged out, we cleared 'username', so this might be missing too.
+    if (!prefs.containsKey('username')) return null;
+
     return {
       'username': prefs.getString('username') ?? 'User',
       'member_status': prefs.getString('member_status') ?? 'PUBLIC',

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/membership_application_screen.dart';
+import 'package:knowa_frontend/main.dart'; // <--- 1. ADD THIS IMPORT
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,7 +14,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
-  Future<Map<String, dynamic>>? _userFuture;
+  // Ensure the type allows null (added ?) to match the service update
+  Future<Map<String, dynamic>?>? _userFuture; 
 
   @override
   void initState() {
@@ -21,44 +23,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadData();
   }
 
-  // Fetch user data from storage
   void _loadData() {
     setState(() {
       _userFuture = _authService.getUserData();
     });
   }
 
-  // This logs the user out
+  // --- 2. UPDATED LOGOUT FUNCTION ---
   void _handleLogout(BuildContext context) async {
     await _authService.logout();
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(
+          // Wrap LoginScreen so the Chatbot appears there
+          builder: (context) => const AppRootWrapper(child: LoginScreen()),
+        ),
         (Route<dynamic> route) => false,
       );
     }
   }
+  // ----------------------------------
 
-  // This converts the database status (e.g., "PENDING")
-  // into a user-friendly string (e.g., "Pending")
   String _getFriendlyStatus(String dbStatus) {
     switch (dbStatus) {
-      case 'PUBLIC':
-        return 'Public User';
-      case 'PENDING':
-        return 'Pending Application';
-      case 'INTERVIEW':
-        return 'Interview Pending';
-      case 'APPROVED_UNPAID':
-        return 'Pending Payment';
-      case 'VOLUNTEER':
-        return 'Volunteer';
-      case 'MEMBER':
-        return 'NGO Member';
-      case 'REJECTED':
-        return 'Application Rejected';
-      default:
-        return 'Active User';
+      case 'PUBLIC': return 'Public User';
+      case 'PENDING': return 'Pending Application';
+      case 'INTERVIEW': return 'Interview Pending';
+      case 'APPROVED_UNPAID': return 'Pending Payment';
+      case 'VOLUNTEER': return 'Volunteer';
+      case 'MEMBER': return 'NGO Member';
+      case 'REJECTED': return 'Application Rejected';
+      default: return 'Active User';
     }
   }
 
@@ -74,12 +69,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(
             icon: const Icon(Icons.settings_outlined, color: Colors.black),
             onPressed: () {
-              // TODO: Navigate to Settings & Security screen
+              // TODO: Navigate to Settings
             },
           ),
         ],
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
+      // Update the generic type to allow nulls: Map<String, dynamic>?
+      body: FutureBuilder<Map<String, dynamic>?>( 
         future: _userFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -88,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (snapshot.hasError) {
             return const Center(child: Text('Failed to load profile.'));
           }
-          if (!snapshot.hasData) {
+          if (!snapshot.hasData || snapshot.data == null) {
             return const Center(child: Text('No profile data found.'));
           }
 
@@ -96,8 +92,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final String displayName = userData['first_name'] ?? 'User';
           final String email = userData['username'] ?? 'No email';
           final String status = userData['member_status'] ?? 'PUBLIC';
-
-          // This logic controls the "Apply" button
           final bool canApply = status == 'PUBLIC' || status == 'REJECTED';
 
           return SingleChildScrollView(
@@ -105,7 +99,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 24),
-                // Profile Header
                 const CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.grey,
@@ -122,25 +115,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // --- THIS IS THE FIX ---
-                // Account Section
                 _buildSectionHeader('Account'),
                 _buildInfoRow(
                   icon: Icons.phone_outlined,
                   label: 'Phone Number',
-                  value: userData['phone'] ?? 'N/A', // We'll add this to auth_service later
+                  value: userData['phone'] ?? 'N/A',
                 ),
                 _buildInfoRow(
                   icon: Icons.shield_outlined,
                   label: 'Status',
-                  value: _getFriendlyStatus(status), // Shows the real status
+                  value: _getFriendlyStatus(status),
                 ),
 
-                // "Apply Here" Button
-                if (canApply)
-                  _buildApplyCard(),
-
-                // --- END OF FIX ---
+                if (canApply) _buildApplyCard(),
 
                 const SizedBox(height: 32),
                 _buildSectionHeader('Settings'),
@@ -158,7 +145,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
 
                 const SizedBox(height: 32),
-                // Logout Button
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -179,7 +165,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Helper for "Account" and "Settings" titles
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -190,7 +175,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Helper for info rows
   Widget _buildInfoRow({
     required IconData icon,
     required String label,
@@ -212,7 +196,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Helper for the "Join Our Team" card
   Widget _buildApplyCard() {
     return Card(
       elevation: 0,
@@ -221,11 +204,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Join Our Team', style: TextStyle(fontWeight: FontWeight.bold)),
         trailing: ElevatedButton(
           onPressed: () async {
-            // Navigate to the application form
             final result = await Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const MembershipApplicationScreen()),
             );
-            // If they submitted, reload the profile to show "Pending"
             if (result == true) {
               _loadData();
             }

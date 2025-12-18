@@ -37,7 +37,7 @@ class _EventsScreenState extends State<EventsScreen> {
       _userData = user;
       _isLoading = false;
       // Load events only if not admin (Admins get redirected anyway)
-      if (user['is_staff'] != true) {
+      if (user != null && user['is_staff'] != true) { 
         _eventsFuture = _eventService.getEvents();
       }
     });

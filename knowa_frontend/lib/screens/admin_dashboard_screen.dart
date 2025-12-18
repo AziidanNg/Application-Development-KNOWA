@@ -9,6 +9,7 @@ import 'package:knowa_frontend/screens/admin_manage_events_screen.dart';
 import 'package:knowa_frontend/models/admin_stats.dart'; 
 import 'package:knowa_frontend/screens/notification_screen.dart'; // <--- 1. IMPORT THIS
 import 'package:intl/intl.dart'; 
+import 'package:knowa_frontend/main.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -29,11 +30,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _handleLogout(BuildContext context) async {
-    await _authService.logout();
+    // Call the service to delete tokens
+    await _authService.logout(); 
+    
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (Route<dynamic> route) => false,
+        MaterialPageRoute(
+          // Now AppRootWrapper will be recognized because of the import above
+          builder: (context) => const AppRootWrapper(child: LoginScreen()), 
+        ),
+        (Route<dynamic> route) => false, 
       );
     }
   }
