@@ -6,6 +6,7 @@ import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Make sure this is imported
 import 'package:knowa_frontend/screens/verify_2fa_screen.dart';
 import 'package:knowa_frontend/screens/forgot_password_screen.dart';
+import 'package:knowa_frontend/main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -69,7 +70,9 @@ class _LoginScreenState extends State<LoginScreen> {
     // Password was correct, TAC was sent. Now go to the verify screen.
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => Verify2FAScreen(username: username),
+        builder: (context) => AppRootWrapper(
+            child: Verify2FAScreen(username: username)
+          ),
       ),
     );
     // ---------------------------------
@@ -167,7 +170,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextButton(
                 onPressed: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                    MaterialPageRoute(builder: (context) => const AppRootWrapper(
+                          child: ForgotPasswordScreen()
+                        )),
                   );
               },
               child: Text("Forgot Password?", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
@@ -203,7 +208,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextButton(
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                      MaterialPageRoute(builder: (context) => const AppRootWrapper(
+                          child: RegisterScreen()
+                        )),
                     );
                   },
                   child: Text("Sign up", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
