@@ -18,6 +18,22 @@ class ChatService {
     throw Exception('Failed to load chats');
   }
 
+  // --- NEW METHOD: Fixes the error in Group Info Screen ---
+  Future<Map<String, dynamic>> getGroupDetails(int roomId) async {
+    final token = await _storage.read(key: 'access_token');
+    // This assumes your Django URL is configured as /api/chat/rooms/<id>/
+    final response = await http.get(
+      Uri.parse('$_baseUrl/rooms/$roomId/'), 
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load group details: ${response.statusCode}');
+    }
+  }
+
   Future<List<dynamic>> getMessages(int roomId) async {
     final token = await _storage.read(key: 'access_token');
     final response = await http.get(
@@ -38,5 +54,19 @@ class ChatService {
       },
       body: jsonEncode({'content': content}),
     );
+  }
+
+  // --- NEW METHOD: For the Pinning Feature ---
+  Future<void> togglePinMessage(int messageId) async {
+    final token = await _storage.read(key: 'access_token');
+    // You will need to add this endpoint to your Django urls.py later
+    final response = await http.post(
+      Uri.parse('$_baseUrl/messages/$messageId/pin/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    
+    if (response.statusCode != 200) {
+      throw Exception('Failed to pin message');
+    }
   }
 }

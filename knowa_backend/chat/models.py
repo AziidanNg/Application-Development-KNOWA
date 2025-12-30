@@ -4,7 +4,6 @@ from django.conf import settings
 from events.models import Event
 
 class ChatRoom(models.Model):
-    # Link to an event (Group Chat). If null, it's a Direct Chat.
     event = models.OneToOneField(
         Event, 
         on_delete=models.CASCADE, 
@@ -12,19 +11,19 @@ class ChatRoom(models.Model):
         blank=True, 
         related_name="chat_room"
     )
-    
-    # Participants (for Direct Chats or extra members)
     participants = models.ManyToManyField(
         settings.AUTH_USER_MODEL, 
         related_name="chat_rooms",
         blank=True
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
+    # Optional: Add a specific chat description if different from Event description
+    description = models.TextField(blank=True, null=True) 
 
     def __str__(self):
+        # 1. SOLVED: The Naming Convention Logic
         if self.event:
-            return f"Group: {self.event.title}"
+            return f"{self.event.title} (Event)"
         return f"Direct Chat ({self.pk})"
 
 class Message(models.Model):
@@ -33,6 +32,9 @@ class Message(models.Model):
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    
+    # 2. SOLVED: Pinning Feature
+    is_pinned = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.sender.username}: {self.content[:20]}"
