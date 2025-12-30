@@ -228,7 +228,7 @@ class _EventsScreenState extends State<EventsScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
-            // Navigate to Details on click
+            // Navigate to Details
             await Navigator.push(
               context,
               MaterialPageRoute(
@@ -238,7 +238,7 @@ class _EventsScreenState extends State<EventsScreen> {
                 ),
               ),
             );
-            // Refresh list on return (in case they joined)
+            // Refresh list on return
             setState(() {
               _eventsFuture = _eventService.getEvents();
             });
@@ -248,7 +248,7 @@ class _EventsScreenState extends State<EventsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Text Section
+                // Text Section (Left)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,23 +259,28 @@ class _EventsScreenState extends State<EventsScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         '$dateStr · $timeStr',
                         style: TextStyle(color: Colors.grey[600], fontSize: 13),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
+                      
+                      // Location Row with Icon
                       Row(
                         children: [
                           Icon(
                             event.isOnline ? Icons.videocam_outlined : Icons.location_on_outlined,
-                            size: 14,
-                            color: Colors.grey[600],
+                            size: 16,
+                            color: Colors.blue.shade700,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              event.location, // <--- Now it shows the actual link/address
+                              // Logic to show nice text for Online events
+                              (event.isOnline && event.location.startsWith('http')) 
+                                  ? "Online Meeting" 
+                                  : event.location,
                               style: TextStyle(color: Colors.grey[600], fontSize: 13),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -283,54 +288,26 @@ class _EventsScreenState extends State<EventsScreen> {
                           ),
                         ],
                       ),
-                      
-                      // "Join" Button (Visual only - action is on Tap)
-                      SizedBox(
-                        height: 36,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                             // Same action as tapping the card
-                             await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => EventDetailScreen(
-                                  event: event,
-                                  userData: _userData!,
-                                ),
-                              ),
-                            );
-                            setState(() {
-                              _eventsFuture = _eventService.getEvents();
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade700,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                          ),
-                          child: const Text('Join', style: TextStyle(color: Colors.white)),
-                        ),
-                      )
                     ],
                   ),
                 ),
                 
                 const SizedBox(width: 12),
 
-                // Image Section
+                // Image Section (Right)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Image.network(
                     event.imageUrl,
-                    width: 100,
-                    height: 100,
+                    width: 90, 
+                    height: 90, 
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        width: 100,
-                        height: 100,
+                        width: 90,
+                        height: 90,
                         color: Colors.grey[200],
-                        child: const Icon(Icons.event, color: Colors.grey),
+                        child: const Icon(Icons.image, color: Colors.grey),
                       );
                     },
                   ),

@@ -4,6 +4,7 @@
 from rest_framework import serializers
 from .models import Event, Meeting
 from users.models import User
+from django.utils import timezone
 
 class EventSerializer(serializers.ModelSerializer):
     organizer_username = serializers.ReadOnlyField(source='organizer.username')
@@ -16,6 +17,7 @@ class EventSerializer(serializers.ModelSerializer):
 
     participants_count = serializers.SerializerMethodField()
     crew_count = serializers.SerializerMethodField()
+    is_joined = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -38,6 +40,7 @@ class EventSerializer(serializers.ModelSerializer):
             'crew_count',
             'calendar_link',
             'is_online',
+            'is_joined',
         ]
         # We don't need to send the whole 'participants' list for this view
         read_only_fields = [
@@ -66,6 +69,30 @@ class EventSerializer(serializers.ModelSerializer):
     def get_crew_count(self, obj):
         # This counts how many users are in the 'crew' list
         return obj.crew.count()
+
+    def validate_start_time(self, value):
+        """
+        Check that the start time is not in the past.
+        """
+        if value < timezone.now():
+            raise serializers.ValidationError("Event start time cannot be in the past.")
+        return value
+    
+    def validate(self, data):
+        """
+        Check that end_time is after start_time.
+        """
+        if data.get('start_time') and data.get('end_time'):
+            if data['end_time'] < data['start_time']:
+                raise serializers.ValidationError({"end_time": "End time must be after start time."})
+        return data
+
+    def get_is_joined(self, obj):
+        user = self.context.get('request').user
+        if user and user.is_authenticated:
+            # Check if this user is in the participants list
+            return obj.participants.filter(id=user.id).exists()
+        return False
     
 class MeetingSerializer(serializers.ModelSerializer):
     participant_count = serializers.SerializerMethodField()

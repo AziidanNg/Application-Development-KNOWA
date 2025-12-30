@@ -22,7 +22,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   late Event _currentEvent;
   late bool _isMember;
-  late bool _isAdmin; // <--- 1. New variable
+  late bool _isAdmin;
   late String _buttonText;
 
   @override
@@ -30,11 +30,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     super.initState();
     _currentEvent = widget.event;
     
-    // Check roles
-    _isAdmin = widget.userData['is_staff'] ?? false; // <--- 2. Check Admin status
+    _isAdmin = widget.userData['is_staff'] ?? false;
     _isMember = widget.userData['member_status'] == 'MEMBER';
     
-    // Set text based on member status (ignored if admin)
     _buttonText = _isMember ? 'Join as Crew' : 'Register Now';
   }
 
@@ -47,6 +45,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     
     if (result['success']) {
       try {
+        // Refresh event details to get the updated counts and isJoined status
         final updatedEvent = await _eventService.getEventDetails(_currentEvent.id);
         setState(() {
           _currentEvent = updatedEvent; 
@@ -117,60 +116,63 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   
                   InkWell(
                     onTap: () async {
-                      final String location = _currentEvent.location.trim(); // Remove extra spaces
-                      
-                      // 1. Check if it is a valid web link (must start with http/https)
+                      final String location = _currentEvent.location.trim();
                       final bool isValidUrl = location.startsWith('http') || location.startsWith('https');
 
                       if (isValidUrl) {
-                        // --- OPEN BROWSER (Zoom/Meet) ---
                         final Uri url = Uri.parse(location);
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url, mode: LaunchMode.externalApplication);
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Could not open this link.")),
-                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not open this link.")));
+                          }
                         }
                       } else if (!_currentEvent.isOnline) {
-                        // --- OPEN GOOGLE MAPS (Only if NOT Online) ---
-                        // If it's offline, we assume it's a physical address
                         final query = Uri.encodeComponent(location);
-                        final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+                        final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query?q=$query');
                         
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url, mode: LaunchMode.externalApplication);
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Could not open Maps.")),
-                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not open Maps.")));
+                          }
                         }
                       } else {
-                        // --- IT IS ONLINE BUT NO LINK PROVIDED ---
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("No meeting link provided for this event.")),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No meeting link provided.")));
                       }
                     },
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Row(
-                        children: [
-                          Icon(Icons.location_on_outlined, color: Colors.blue.shade700, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _currentEvent.location,
-                              style: TextStyle(
-                                fontSize: 16, 
-                                color: Colors.blue.shade700, 
-                                decoration: TextDecoration.underline,
-                              ),
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      children: [
+                        // Logic 1: Show Video Icon if Online, otherwise Location Pin
+                        Icon(
+                          _currentEvent.isOnline ? Icons.video_call : Icons.location_on_outlined, 
+                          color: Colors.blue.shade700, 
+                          size: 20
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            // Logic 2: If Online AND has a link -> Show "Join Online Meeting"
+                            // Otherwise -> Show the address/text normally
+                            (_currentEvent.isOnline && _currentEvent.location.startsWith('http'))
+                                ? "Join Online Meeting" 
+                                : _currentEvent.location,
+                            
+                            style: TextStyle(
+                              fontSize: 16, 
+                              color: Colors.blue.shade700, 
+                              decoration: TextDecoration.underline,
+                              fontWeight: FontWeight.w600, // Made it slightly bolder
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                  ),
                   ),
                   const SizedBox(height: 8),
                   
@@ -190,28 +192,56 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                   const SizedBox(height: 24),
                   
-                  // --- 3. HIDE JOIN BUTTON FOR ADMINS ---
+                  // --- NEW LOGIC: SMART BUTTON ---
                   if (!_isAdmin) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleRegisterOrJoin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade700,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    // If user is ALREADY joined, show "Registered" box
+                    if (_currentEvent.isJoined) 
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade300),
                         ),
-                        child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(
-                              _buttonText, 
-                              style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.green),
+                            const SizedBox(width: 8),
+                            Text(
+                              "You are Registered",
+                              style: TextStyle(
+                                fontSize: 16, 
+                                color: Colors.green.shade800, 
+                                fontWeight: FontWeight.bold
+                              ),
                             ),
+                          ],
+                        ),
+                      )
+                    // If NOT joined, show the normal blue button
+                    else 
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleRegisterOrJoin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade700,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: _isLoading 
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Text(
+                                _buttonText, 
+                                style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 12),
                   ],
-                  // -------------------------------------
+                  // -------------------------------
                   
                   SizedBox(
                     width: double.infinity,

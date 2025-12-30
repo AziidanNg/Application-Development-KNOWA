@@ -90,7 +90,11 @@ Future<Map<String, dynamic>> createEvent({
 
     request.fields['title'] = title;
     request.fields['description'] = description;
-    request.fields['location'] = isOnline ? 'Online' : location;
+    if (isOnline && location.trim().isEmpty) {
+       request.fields['location'] = 'Online';
+    } else {
+       request.fields['location'] = location;
+    }
     request.fields['start_time'] = startTime;
     request.fields['end_time'] = endTime;
     request.fields['capacity_participants'] = capacityParticipants.toString();
@@ -157,7 +161,11 @@ Future<Map<String, dynamic>> updateEvent(
     // ... (all your request.fields are here) ...
     request.fields['title'] = title;
     request.fields['description'] = description;
-    request.fields['location'] = isOnline ? 'Online' : location;
+    if (isOnline && location.trim().isEmpty) {
+       request.fields['location'] = 'Online';
+    } else {
+       request.fields['location'] = location;
+    }
     request.fields['start_time'] = startTime;
     request.fields['end_time'] = endTime;
     request.fields['capacity_participants'] = capacityParticipants.toString();

@@ -2,13 +2,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:knowa_frontend/services/event_service.dart';
 import 'package:knowa_frontend/models/event.dart';
-import 'package:image_picker/image_picker.dart';
 
 class AdminCreateEventScreen extends StatefulWidget {
   final Event? eventToEdit;
-
   const AdminCreateEventScreen({super.key, this.eventToEdit});
 
   @override
@@ -16,135 +15,167 @@ class AdminCreateEventScreen extends StatefulWidget {
 }
 
 class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
+  // --- 1. SIMPLIFIED STATE VARIABLES ---
   final _formKey = GlobalKey<FormState>();
   final _eventService = EventService();
+  final _imagePicker = ImagePicker();
 
-  // Controllers
+  // Text Controllers
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _capacityController = TextEditingController();
-  // Removed _calendarLinkController
-  final _locationController = TextEditingController();
   final _crewCapacityController = TextEditingController();
+  final _locationController = TextEditingController();
 
-  // State
+  // Event Data
   DateTime? _selectedDate;
   TimeOfDay? _selectedStartTime;
   TimeOfDay? _selectedEndTime;
   bool _isOnline = true;
   String _visibility = 'DRAFT';
-  bool _isLoading = false;
-
-  final _imagePicker = ImagePicker();
+  
+  // Image Data
   XFile? _imageFile;
   String? _existingImageUrl;
-
+  
+  // UI State
+  bool _isLoading = false;
   bool get _isEditMode => widget.eventToEdit != null;
 
   @override
   void initState() {
     super.initState();
     if (_isEditMode) {
-      final event = widget.eventToEdit!;
-      _titleController.text = event.title;
-      _descriptionController.text = event.description;
-      _capacityController.text = event.capacityParticipants.toString();
-      _crewCapacityController.text = event.capacityCrew.toString();
-      
-      // Use location field for both Link (if online) and Address (if offline)
-      _locationController.text = event.location;
-      
-      _selectedDate = event.startTime;
-      _selectedStartTime = TimeOfDay.fromDateTime(event.startTime);
-      _selectedEndTime = TimeOfDay.fromDateTime(event.endTime);
-      _isOnline = event.isOnline;
-      _visibility = event.status;
-      _existingImageUrl = event.imageUrl;
+      _loadExistingData();
     }
   }
 
+  void _loadExistingData() {
+    final event = widget.eventToEdit!;
+    _titleController.text = event.title;
+    _descriptionController.text = event.description;
+    _capacityController.text = event.capacityParticipants.toString();
+    _crewCapacityController.text = event.capacityCrew.toString();
+    _locationController.text = event.location;
+    _selectedDate = event.startTime;
+    _selectedStartTime = TimeOfDay.fromDateTime(event.startTime);
+    _selectedEndTime = TimeOfDay.fromDateTime(event.endTime);
+    _isOnline = event.isOnline;
+    _visibility = event.status;
+    _existingImageUrl = event.imageUrl;
+  }
+
+  // --- 2. LOGIC FIXES IN SUBMIT ---
   void _handleSubmit() async {
-    if (!_formKey.currentState!.validate() || _selectedDate == null || _selectedStartTime == null || _selectedEndTime == null) {
+    if (!_formKey.currentState!.validate()) return;
+    
+    if (_selectedDate == null || _selectedStartTime == null || _selectedEndTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields.')),
+        const SnackBar(content: Text('Please select Date, Start Time, and End Time.')),
       );
       return;
     }
 
     setState(() { _isLoading = true; });
 
-    final startDateTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedStartTime!.hour, _selectedStartTime!.minute);
-    final endDateTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, _selectedEndTime!.hour, _selectedEndTime!.minute);
+    // Combine Date + Time
+    final startDateTime = DateTime(
+      _selectedDate!.year, _selectedDate!.month, _selectedDate!.day,
+      _selectedStartTime!.hour, _selectedStartTime!.minute
+    );
+    
+    final endDateTime = DateTime(
+      _selectedDate!.year, _selectedDate!.month, _selectedDate!.day,
+      _selectedEndTime!.hour, _selectedEndTime!.minute
+    );
 
-    final eventData = {
-      'title': _titleController.text,
-      'description': _descriptionController.text,
-      'location': _locationController.text, // Stores Link or Address
-      'startTime': startDateTime.toIso8601String(),
-      'endTime': endDateTime.toIso8601String(),
-      'capacity': int.tryParse(_capacityController.text) ?? 50,
-      'status': _visibility,
-      'isOnline': _isOnline,
-      'calendarLink': '', // Field removed, sending empty
-      'imageFile': _imageFile,
-    };
+    // FIX: Check if End Time is before Start Time
+    if (endDateTime.isBefore(startDateTime)) {
+      setState(() { _isLoading = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('End time cannot be before Start time.')),
+      );
+      return;
+    }
 
+    // Prepare Data
     final Map<String, dynamic> result;
+    final int capacity = int.tryParse(_capacityController.text) ?? 50;
+    final int crewCapacity = int.tryParse(_crewCapacityController.text) ?? 10;
+
+    // Call Service
     if (_isEditMode) {
       result = await _eventService.updateEvent(
         widget.eventToEdit!.id,
-        title: eventData['title'] as String,
-        description: eventData['description'] as String,
-        location: eventData['location'] as String,
-        startTime: eventData['startTime'] as String,
-        endTime: eventData['endTime'] as String,
-        capacityParticipants: int.tryParse(_capacityController.text) ?? 50,
-        capacityCrew: int.tryParse(_crewCapacityController.text) ?? 10,  
-        status: eventData['status'] as String,
-        isOnline: eventData['isOnline'] as bool,
-        calendarLink: eventData['calendarLink'] as String?,
-        imageFile: eventData['imageFile'] as XFile?,
+        title: _titleController.text,
+        description: _descriptionController.text,
+        location: _locationController.text,
+        startTime: startDateTime.toIso8601String(),
+        endTime: endDateTime.toIso8601String(),
+        capacityParticipants: capacity,
+        capacityCrew: crewCapacity,
+        status: _visibility,
+        isOnline: _isOnline,
+        calendarLink: '', 
+        imageFile: _imageFile,
       );
     } else {
       result = await _eventService.createEvent(
-        title: eventData['title'] as String,
-        description: eventData['description'] as String,
-        location: eventData['location'] as String,
-        startTime: eventData['startTime'] as String,
-        endTime: eventData['endTime'] as String,
-        capacityParticipants: int.tryParse(_capacityController.text) ?? 50, 
-        capacityCrew: int.tryParse(_crewCapacityController.text) ?? 10, 
-        status: eventData['status'] as String,
-        isOnline: eventData['isOnline'] as bool,
-        calendarLink: eventData['calendarLink'] as String?,
-        imageFile: eventData['imageFile'] as XFile?,
+        title: _titleController.text,
+        description: _descriptionController.text,
+        location: _locationController.text,
+        startTime: startDateTime.toIso8601String(),
+        endTime: endDateTime.toIso8601String(),
+        capacityParticipants: capacity,
+        capacityCrew: crewCapacity,
+        status: _visibility,
+        isOnline: _isOnline,
+        calendarLink: '',
+        imageFile: _imageFile,
       );
     }
 
     setState(() { _isLoading = false; });
+
     if (!mounted) return;
 
     if (result['success']) {
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(true); // Return success
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save event: ${result['error']}')),
+        SnackBar(content: Text('Failed: ${result['error']}')),
       );
     }
   }
 
-  // Helper for styling
-  InputDecoration _buildInputDecoration({required String hint, IconData? icon}) {
-    return InputDecoration(
-      hintText: hint,
-      suffixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
-      filled: true,
-      fillColor: Colors.grey[100],
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide.none,
-      ),
+  // --- 3. FIX: DATE PICKER RESTRICTION ---
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      // FIX: Set firstDate to NOW to prevent past dates
+      firstDate: DateTime.now(), 
+      lastDate: DateTime(2101),
     );
+    if (picked != null) {
+      setState(() { _selectedDate = picked; });
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context, bool isStartTime) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isStartTime) {
+          _selectedStartTime = picked;
+        } else {
+          _selectedEndTime = picked;
+        }
+      });
+    }
   }
 
   Future<void> _pickImage() async {
@@ -157,36 +188,14 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
     }
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2101),
+  InputDecoration _buildInputDecoration({required String hint, IconData? icon}) {
+    return InputDecoration(
+      hintText: hint,
+      suffixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
+      filled: true,
+      fillColor: Colors.grey[100],
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide.none),
     );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
-  Future<void> _selectTime(BuildContext context, bool isStartTime) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: isStartTime 
-        ? (_selectedStartTime ?? TimeOfDay.now())
-        : (_selectedEndTime ?? TimeOfDay.now()),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isStartTime) {
-          _selectedStartTime = picked;
-        } else {
-          _selectedEndTime = picked;
-        }
-      });
-    }
   }
 
   @override
@@ -206,6 +215,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Title
               TextFormField(
                 controller: _titleController,
                 decoration: _buildInputDecoration(hint: 'Event Title'),
@@ -213,6 +223,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Image Picker
               Container(
                 height: 150,
                 width: double.infinity,
@@ -225,7 +236,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                   onTap: _pickImage,
                   child: _imageFile != null
                       ? Image.file(File(_imageFile!.path), fit: BoxFit.cover)
-                      : (_existingImageUrl != null && _existingImageUrl!.isNotEmpty)
+                      : (_existingImageUrl != null)
                           ? Image.network(_existingImageUrl!, fit: BoxFit.cover)
                           : const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -239,6 +250,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Date Picker
               TextFormField(
                 readOnly: true,
                 decoration: _buildInputDecoration(
@@ -249,6 +261,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Time Pickers
               Row(
                 children: [
                   Expanded(
@@ -276,6 +289,7 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Online/Offline Toggle
               ToggleButtons(
                 isSelected: [_isOnline, !_isOnline],
                 onPressed: (index) {
@@ -287,48 +301,52 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
               ),
               const SizedBox(height: 16),
 
-              // --- UPDATED LOCATION FIELD ---
+              // Location / Link
               TextFormField(
                 controller: _locationController,
                 decoration: _buildInputDecoration(
-                  // Dynamic hint based on status
-                  hint: _isOnline ? 'Online Meeting Link (e.g. Zoom)' : 'Event Location',
+                  hint: _isOnline ? 'Online Meeting Link (e.g. Zoom)' : 'Event Location (Address)',
                 ),
                 validator: (value) => value!.isEmpty ? 'This field is required' : null,
               ),
-              // ------------------------------
-
               const SizedBox(height: 16),
 
-              const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
+              // Description
               TextFormField(
                 controller: _descriptionController,
-                decoration: _buildInputDecoration(hint: 'Enter event details...').copyWith(
+                decoration: _buildInputDecoration(hint: 'Event Description...').copyWith(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
-                maxLines: 5,
+                maxLines: 4,
                 validator: (value) => value!.isEmpty ? 'Please enter a description' : null,
               ),
               const SizedBox(height: 16),
 
-              TextFormField(
-                controller: _capacityController,
-                decoration: _buildInputDecoration(hint: 'Participant Capacity'),
-                keyboardType: TextInputType.number,
-                validator: (value) => value!.isEmpty ? 'Please enter participant capacity' : null,
-              ),
-              const SizedBox(height: 16),
-              
-              TextFormField(
-                controller: _crewCapacityController,
-                decoration: _buildInputDecoration(hint: 'Crew Capacity'),
-                keyboardType: TextInputType.number,
-                validator: (value) => value!.isEmpty ? 'Please enter crew capacity' : null,
+              // Capacities
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _capacityController,
+                      decoration: _buildInputDecoration(hint: 'Participants'),
+                      keyboardType: TextInputType.number,
+                      validator: (value) => value!.isEmpty ? 'Required' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _crewCapacityController,
+                      decoration: _buildInputDecoration(hint: 'Crew'),
+                      keyboardType: TextInputType.number,
+                      validator: (value) => value!.isEmpty ? 'Required' : null,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 
-              // Visibility Dropdown
+              // Visibility
               DropdownButtonFormField<String>(
                 value: _visibility,
                 decoration: _buildInputDecoration(hint: 'Visibility'),
@@ -336,14 +354,11 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
                   DropdownMenuItem(value: 'DRAFT', child: Text('Draft (Hidden)')),
                   DropdownMenuItem(value: 'PUBLISHED', child: Text('Published (Visible)')),
                 ],
-                onChanged: (value) {
-                  setState(() {
-                    _visibility = value!;
-                  });
-                },
+                onChanged: (value) => setState(() => _visibility = value!),
               ),
               const SizedBox(height: 32),
 
+              // Submit Button
               SizedBox(
                 width: double.infinity,
                 height: 50,

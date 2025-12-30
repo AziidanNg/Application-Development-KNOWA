@@ -17,6 +17,7 @@ class Event {
   final int crewCount;            
   final String? calendarLink; // Make it nullable
   final bool isOnline;
+  final bool isJoined;
 
   Event({
     required this.id,
@@ -34,6 +35,7 @@ class Event {
     required this.crewCount,
     this.calendarLink,
     required this.isOnline,
+    required this.isJoined,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -56,6 +58,7 @@ class Event {
       status: json['status'] ?? 'DRAFT',
       calendarLink: json['calendar_link'],
       isOnline: json['is_online'] ?? false,
+      isJoined: json['is_joined'] ?? false,
     );
   }
 }
