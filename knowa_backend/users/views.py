@@ -1,7 +1,7 @@
 # users/views.py
 
 # --- 1. STANDARD LIBRARIES & DJANGO IMPORTS ---
-import google.generativeai as genai
+from google import genai
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
@@ -474,14 +474,14 @@ class AIChatbotView(APIView):
                 "6. PASSWORD: Use 'Forgot Password?' on the login screen to get a TAC code.\n"
             )
 
-            # --- 3. CONFIGURE AI ---
+            # --- 3. CONFIGURE NEW CLIENT ---
             api_key = getattr(settings, 'GEMINI_API_KEY', None)
             if not api_key:
                 print("CRITICAL: Missing API Key in settings")
                 return Response({'error': 'Missing API Key'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-2.5-flash')
+            # --- NEW SDK SYNTAX ---
+            client = genai.Client(api_key=api_key)
 
             full_prompt = (
                 "You are the friendly AI support for KNOWA app. "
@@ -494,10 +494,15 @@ class AIChatbotView(APIView):
                 f"USER QUESTION: {user_message}"
             )
 
-            response = model.generate_content(full_prompt)
+            # Generate Content using the new method
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=full_prompt
+            )
+
+            # Access text via response.text
             return Response({'reply': response.text}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # --- THIS WILL PRINT THE ERROR TO YOUR TERMINAL ---
             print(f"CRITICAL CHATBOT ERROR: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

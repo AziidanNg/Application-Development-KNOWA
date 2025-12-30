@@ -1,96 +1,100 @@
 // lib/screens/main_navigation_screen.dart
 import 'package:flutter/material.dart';
-import 'package:knowa_frontend/screens/dashboard_screen.dart'; // Public Dashboard
-import 'package:knowa_frontend/screens/admin_dashboard_screen.dart'; // Admin Dashboard
+import 'package:knowa_frontend/screens/dashboard_screen.dart';
+import 'package:knowa_frontend/screens/admin_dashboard_screen.dart';
 import 'package:knowa_frontend/screens/events_screen.dart';
 import 'package:knowa_frontend/screens/calendar_screen.dart';
-import 'package:knowa_frontend/screens/chatbot_screen.dart';
 import 'package:knowa_frontend/screens/profile_screen.dart';
-import 'package:knowa_frontend/screens/chat_screen.dart';
+import 'package:knowa_frontend/screens/chat_list_screen.dart'; // <--- IMPORT YOUR CHAT LIST
 
 class MainNavigationScreen extends StatefulWidget {
-  // --- 1. ADD THIS ---
-  // We will pass the user's data to this screen
   final Map<String, dynamic> userData;
 
   const MainNavigationScreen({super.key, required this.userData});
-  // -----------------
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _selectedIndex = 0; 
-
-  // --- 1. DECLARE THE LISTS (THEY ARE NO LONGER STATIC) ---
-  late final List<Widget> _screens;
-  late final List<BottomNavigationBarItem> _navBarItems;
+  int _currentIndex = 0;
+  late List<Widget> _screens;
+  late bool _isAdmin;
 
   @override
   void initState() {
     super.initState();
+    
+    // Check if user is staff/admin based on the data passed from Login
+    _isAdmin = widget.userData['is_staff'] == true;
 
-    // Get the user's role from the "widget"
-    final bool isStaff = widget.userData['is_staff'] ?? false;
+    _screens = [
+      // 1. Home (Dashboard)
+      // If Admin, show AdminDashboard, else show User Dashboard
+      _isAdmin ? const AdminDashboardScreen() : const DashboardScreen(),
 
-    // --- 2. DYNAMICALLY BUILD THE LISTS ---
-    if (isStaff) {
-      // --- ADMIN TABS ---
-      _screens = const [
-        AdminDashboardScreen(),
-        EventsScreen(),
-        CalendarScreen(),
-        ChatScreen(), // <-- Admin "Chat"
-        ProfileScreen(),
-      ];
-      _navBarItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.event_outlined), activeIcon: Icon(Icons.event), label: 'Events'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), activeIcon: Icon(Icons.calendar_today), label: 'Calendar'),
-        BottomNavigationBarItem(icon: Icon(Icons.chat_outlined), activeIcon: Icon(Icons.chat), label: 'Chat'), // <-- Admin "Chat"
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
-      ];
-    } else {
-      // --- PUBLIC/MEMBER TABS ---
-      _screens = const [
-        DashboardScreen(),
-        EventsScreen(),
-        CalendarScreen(),
-        ChatbotScreen(), // <-- Public "Chatbot"
-        ProfileScreen(),
-      ];
-      _navBarItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.event_outlined), activeIcon: Icon(Icons.event), label: 'Events'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), activeIcon: Icon(Icons.calendar_today), label: 'Calendar'),
-        BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Chatbot'), // <-- Public "Chatbot"
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
-      ];
-    }
+      // 2. Events
+      const EventsScreen(),
+
+      // 3. Calendar
+      const CalendarScreen(),
+
+      // 4. CHAT (Replaces the old Chatbot tab)
+      // This shows the list of Group Chats & DMs
+      const ChatListScreen(), 
+
+      // 5. Profile
+      const ProfileScreen(),
+    ];
   }
 
-  void _onItemTapped(int index) {
+  void _onTabTapped(int index) {
     setState(() {
-      _selectedIndex = index;
+      _currentIndex = index;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens.elementAt(_selectedIndex), // Show the selected screen
+      // We use IndexedStack to keep the state of each tab alive
+      // (so you don't lose your scroll position in Chat when you go to Profile)
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      
       bottomNavigationBar: BottomNavigationBar(
-        items: _navBarItems, // <-- 3. USE THE DYNAMIC LIST
-
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-
-        type: BottomNavigationBarType.fixed,
+        currentIndex: _currentIndex,
+        onTap: _onTabTapped,
+        type: BottomNavigationBarType.fixed, // Needed for 4+ items
         selectedItemColor: Colors.blue.shade700,
-        unselectedItemColor: Colors.grey[600],
-        backgroundColor: Colors.white,
-        elevation: 10.0,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home), 
+            label: 'Home'
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.confirmation_number), 
+            label: 'Events'
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month), 
+            label: 'Calendar'
+          ),
+          // --- UPDATED TAB ---
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble), // Changed icon to generic Chat
+            label: 'Chat'                  // Changed label from 'Chatbot'
+          ),
+          // -------------------
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person), 
+            label: 'Profile'
+          ),
+        ],
       ),
     );
   }

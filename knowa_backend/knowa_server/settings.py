@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     # My Apps (This is the most important fix)
     'users.apps.UsersConfig',
     'events',
+    'chat',
     'donations',
 
     # Default Django Apps
