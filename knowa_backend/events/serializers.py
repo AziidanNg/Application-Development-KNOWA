@@ -90,8 +90,12 @@ class EventSerializer(serializers.ModelSerializer):
     def get_is_joined(self, obj):
         user = self.context.get('request').user
         if user and user.is_authenticated:
-            # Check if this user is in the participants list
-            return obj.participants.filter(id=user.id).exists()
+            # FIX: Check if user is in Participants OR in Crew
+            is_participant = obj.participants.filter(id=user.id).exists()
+            is_crew = obj.crew.filter(id=user.id).exists()
+            
+            return is_participant or is_crew
+            
         return False
     
 class MeetingSerializer(serializers.ModelSerializer):
