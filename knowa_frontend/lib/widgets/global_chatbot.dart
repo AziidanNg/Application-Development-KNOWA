@@ -1,15 +1,13 @@
-// lib/widgets/global_chatbot.dart
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:flutter/foundation.dart'; // For platform check
+import '../services/chatbot_service.dart';
+import '../models/faq_model.dart';
 
 class GlobalChatbot extends StatefulWidget {
   final double additionalBottomPadding;
 
   const GlobalChatbot({
     super.key, 
-    this.additionalBottomPadding = 0.0, // Default is 0
+    this.additionalBottomPadding = 0.0,
   });
 
   @override
@@ -17,19 +15,31 @@ class GlobalChatbot extends StatefulWidget {
 }
 
 class _GlobalChatbotState extends State<GlobalChatbot> {
-  bool _isOpen = false; // Is the chat window open?
+  final ChatbotService _chatbotService = ChatbotService();
   final TextEditingController _controller = TextEditingController();
-  final List<Map<String, String>> _messages = [];
-  bool _isLoading = false;
   final ScrollController _scrollController = ScrollController();
+  
+  bool _isOpen = false;
+  bool _isLoading = false;
+  List<Map<String, String>> _messages = [];
+  List<FAQ> _faqs = [];
 
-  // Correct URL for Emulator vs Device
-  final String _baseUrl = defaultTargetPlatform == TargetPlatform.android
-      ? 'http://10.0.2.2:8000/api/users/chatbot/'
-      : 'http://127.0.0.1:8000/api/users/chatbot/';
+  @override
+  void initState() {
+    super.initState();
+    _fetchFAQs();
+  }
 
-  Future<void> _sendMessage() async {
-    final text = _controller.text.trim();
+  void _fetchFAQs() async {
+    try {
+      final faqs = await _chatbotService.getFAQs();
+      if (mounted) setState(() => _faqs = faqs);
+    } catch (e) {
+      print("FAQ Fetch Error: $e");
+    }
+  }
+
+  Future<void> _handleMessage(String text) async {
     if (text.isEmpty) return;
 
     setState(() {
@@ -40,32 +50,34 @@ class _GlobalChatbotState extends State<GlobalChatbot> {
     _scrollToBottom();
 
     try {
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'message': text}),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _messages.add({'role': 'ai', 'text': data['reply']});
-        });
-      } else {
-        setState(() {
-          _messages.add({'role': 'ai', 'text': 'Error connecting to server.'});
-        });
+      final reply = await _chatbotService.sendMessage(text);
+      if (mounted) {
+        setState(() => _messages.add({'role': 'ai', 'text': reply}));
       }
     } catch (e) {
-      setState(() {
-        _messages.add({'role': 'ai', 'text': 'Connection failed. Is server running?'});
-      });
+      if (mounted) {
+        setState(() => _messages.add({'role': 'ai', 'text': 'Connection Error.'}));
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      _scrollToBottom();
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _scrollToBottom();
+      }
     }
+  }
+
+  void _onFAQClicked(FAQ faq) {
+    setState(() {
+      _messages.add({'role': 'user', 'text': faq.question});
+    });
+    _scrollToBottom();
+
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        setState(() => _messages.add({'role': 'ai', 'text': faq.answer}));
+        _scrollToBottom();
+      }
+    });
   }
 
   void _scrollToBottom() {
@@ -80,15 +92,60 @@ class _GlobalChatbotState extends State<GlobalChatbot> {
     });
   }
 
+  void _showFAQSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: 400,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Common Questions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const Divider(),
+            Expanded(
+              child: _faqs.isEmpty
+                ? const Center(child: Text("No common questions found."))
+                : ListView.builder(
+                    itemCount: _faqs.length,
+                    itemBuilder: (context, index) {
+                      final faq = _faqs[index];
+                      return ListTile(
+                        leading: const Icon(Icons.help_outline, color: Colors.orange),
+                        title: Text(faq.question),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _onFAQClicked(faq);
+                        },
+                      );
+                    },
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final double bottomPadding = MediaQuery.of(context).padding.bottom;
-    final double bottomOffset = 20 + bottomPadding + widget.additionalBottomPadding;
+    final double bottomOffset = 20 + MediaQuery.of(context).padding.bottom + widget.additionalBottomPadding;
     
-    // If chat is NOT open, show button
+    // CLOSED STATE
     if (!_isOpen) {
       return Positioned(
-        bottom: bottomOffset, // <--- UPDATED
+        bottom: bottomOffset,
         right: 20,
         child: FloatingActionButton(
           onPressed: () => setState(() => _isOpen = true),
@@ -99,9 +156,9 @@ class _GlobalChatbotState extends State<GlobalChatbot> {
       );
     }
 
-    // If chat IS open, show window
+    // OPEN STATE
     return Positioned(
-      bottom: bottomOffset, // <--- UPDATED
+      bottom: bottomOffset,
       right: 20,
       child: Material(
         elevation: 8,
@@ -116,8 +173,7 @@ class _GlobalChatbotState extends State<GlobalChatbot> {
           ),
           child: Column(
             children: [
-              // ... (Rest of your header, chat list, and input code remains exactly the same) ...
-              // Header
+              // 1. MAIN HEADER
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
@@ -136,21 +192,43 @@ class _GlobalChatbotState extends State<GlobalChatbot> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.white),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                       onPressed: () => setState(() => _isOpen = false),
                     ),
                   ],
                 ),
               ),
 
-              // Chat List
+              // 2. NEW: FAQ BAR (Below Header)
+              GestureDetector(
+                onTap: _showFAQSheet,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  color: Colors.orange.shade50, // Subtle highlight color
+                  child: Row(
+                    children: [
+                      const Icon(Icons.help_outline, size: 18, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          "View Common FAQs", 
+                          style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold, fontSize: 13)
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios, size: 12, color: Colors.orange.shade300),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+
+              // 3. CHAT HISTORY
               Expanded(
                 child: _messages.isEmpty
                     ? const Center(
                         child: Padding(
                           padding: EdgeInsets.all(32.0),
-                          child: Text("Hi! Ask me anything about registration, login, or events.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                          child: Text("Ask me about events or tap the FAQ bar above.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
                         ),
                       )
                     : ListView.builder(
@@ -177,14 +255,13 @@ class _GlobalChatbotState extends State<GlobalChatbot> {
                       ),
               ),
 
-              // Loading
               if (_isLoading)
                 const Padding(
                   padding: EdgeInsets.all(8.0),
                   child: Text("Thinking...", style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ),
 
-              // Input
+              // 4. INPUT BAR (Cleaned up)
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
@@ -199,13 +276,13 @@ class _GlobalChatbotState extends State<GlobalChatbot> {
                           filled: true,
                           fillColor: Colors.grey.shade50,
                         ),
-                        onSubmitted: (_) => _sendMessage(),
+                        onSubmitted: (val) => _handleMessage(val),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
                       icon: Icon(Icons.send, color: Colors.blue.shade700),
-                      onPressed: _sendMessage,
+                      onPressed: () => _handleMessage(_controller.text),
                     ),
                   ],
                 ),

@@ -10,6 +10,7 @@ urlpatterns = [
     path('api/events/', include('events.urls')),
     path('api/donations/', include('donations.urls')),
     path('api/chat/', include('chat.urls')),
+    path('api/chatbot/', include('chatbot.urls')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

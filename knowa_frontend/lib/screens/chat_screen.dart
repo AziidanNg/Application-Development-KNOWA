@@ -225,76 +225,129 @@ class _ChatScreenState extends State<ChatScreen> {
               itemCount: _messages.length,
               itemBuilder: (ctx, i) {
                 final msg = _messages[i];
-                // Safety check: if currentUserId is null, default to false (Left side)
+                final DateTime msgDate = DateTime.parse(msg['timestamp']);
+                final primaryColor = Theme.of(context).primaryColor; // Get theme color
+
+                // 1. DATE SEPARATOR LOGIC
+                bool showDateHeader = false;
+                if (i == 0) {
+                  showDateHeader = true; // First message always gets a date
+                } else {
+                  final DateTime prevDate = DateTime.parse(_messages[i - 1]['timestamp']);
+                  if (!isSameDay(msgDate, prevDate)) {
+                    showDateHeader = true; // New day detected
+                  }
+                }
+
+                // Variable Setup
                 final bool isMe = msg['is_me'] ?? false;
                 final bool isPinned = msg['is_pinned'] ?? false;
-                final String time = msg['timestamp'].toString().substring(11, 16);
+                // Remove 'T' from time string if present
+                final String time = msg['timestamp'].toString().substring(11, 16); 
 
-                return GestureDetector(
-                  onLongPress: () {
-                     showModalBottomSheet(context: context, builder: (c) => Wrap(children: [
-                       ListTile(
-                         leading: const Icon(Icons.push_pin), 
-                         title: Text(isPinned ? 'Unpin Message' : 'Pin Message'), 
-                         onTap: () { Navigator.pop(context); _togglePinMessage(msg['id']); }
-                       ),
-
-                       // 2. NEW: INFO OPTION (Only for My messages)
-                       if (isMe) 
-                         ListTile(
-                           leading: const Icon(Icons.info_outline),
-                           title: const Text("Message Info"),
-                           onTap: () {
-                             Navigator.pop(context);
-                             Navigator.push(context, MaterialPageRoute(
-                               builder: (c) => MessageInfoScreen(messageId: msg['id'])
-                             ));
-                           }
-                         ),
-                     ]));
-                  },
-                  child: Align(
-                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        // Color Logic: "Me" gets Primary Color (light), "Other" gets White
-                        color: isMe ? primaryColor.withOpacity(0.1) : Colors.white,
-                        border: isPinned ? Border.all(color: Colors.orange) : null,
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(12),
-                          topRight: const Radius.circular(12),
-                          bottomLeft: isMe ? const Radius.circular(12) : Radius.zero,
-                          bottomRight: isMe ? Radius.zero : const Radius.circular(12),
+                // 2. RETURN A COLUMN (To hold both Date + Message)
+                return Column(
+                  children: [
+                    // A. The Date Header (Only if needed)
+                    if (showDateHeader)
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 2, offset: const Offset(0, 1))],
+                        child: Text(
+                          formatDateLabel(msgDate), // Uses the helper function
+                          style: TextStyle(color: Colors.grey[800], fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (!isMe)
-                            Text(msg['sender_name'] ?? 'User', style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 12)),
-                          
-                          Text(msg['content'] ?? '', style: const TextStyle(fontSize: 16)),
-                          
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.end,
+
+                    // B. The Message Bubble
+                    GestureDetector(
+                      onLongPress: () {
+                        showModalBottomSheet(
+                          context: context, 
+                          builder: (c) => Wrap(
                             children: [
-                              Text(time, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                              if (isMe) ...[
-                                const SizedBox(width: 4),
-                                _buildDoubleTick(msg['is_read'] ?? false),
-                              ]
+                              // Pin Option
+                              ListTile(
+                                leading: const Icon(Icons.push_pin),
+                                title: Text(isPinned ? 'Unpin Message' : 'Pin Message'),
+                                onTap: () { 
+                                  Navigator.pop(context); 
+                                  _togglePinMessage(msg['id']); 
+                                }
+                              ),
+                              // Info Option (Only if isMe)
+                              if (isMe)
+                                ListTile(
+                                  leading: const Icon(Icons.info_outline),
+                                  title: const Text("Message Info"),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    Navigator.push(
+                                      context, 
+                                      MaterialPageRoute(builder: (c) => MessageInfoScreen(messageId: msg['id']))
+                                    );
+                                  }
+                                ),
+                            ],
+                          )
+                        );
+                      },
+                      child: Align(
+                        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isMe ? primaryColor.withOpacity(0.1) : Colors.white,
+                            border: isPinned ? Border.all(color: Colors.orange) : null,
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(12),
+                              topRight: const Radius.circular(12),
+                              bottomLeft: isMe ? const Radius.circular(12) : Radius.zero,
+                              bottomRight: isMe ? Radius.zero : const Radius.circular(12),
+                            ),
+                            boxShadow: [
+                              BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 2, offset: const Offset(0, 1))
                             ],
                           ),
-                        ],
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Sender Name (Only for others)
+                              if (!isMe)
+                                Text(
+                                  msg['sender_name'] ?? 'User', 
+                                  style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 12)
+                                ),
+
+                              // Message Content
+                              Text(msg['content'] ?? '', style: const TextStyle(fontSize: 16)),
+
+                              const SizedBox(height: 4),
+                              
+                              // Time & Ticks
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(time, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                  if (isMe) ...[
+                                    const SizedBox(width: 4),
+                                    _buildDoubleTick(msg['is_read'] ?? false),
+                                  ]
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 );
               },
             ),
@@ -348,4 +401,24 @@ Color darken(Color color, [double amount = .1]) {
   final hsl = HSLColor.fromColor(color);
   final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
   return hslDark.toColor();
+}
+
+// Check if two dates are on the same day
+bool isSameDay(DateTime date1, DateTime date2) {
+  return date1.year == date2.year && 
+         date1.month == date2.month && 
+         date1.day == date2.day;
+}
+
+// Format date nicely
+String formatDateLabel(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final yesterday = DateTime(now.year, now.month, now.day - 1);
+  final dateToCheck = DateTime(date.year, date.month, date.day);
+
+  if (isSameDay(dateToCheck, today)) return "Today";
+  if (isSameDay(dateToCheck, yesterday)) return "Yesterday";
+  // Fallback: DD/MM/YYYY
+  return "${date.day}/${date.month}/${date.year}";
 }

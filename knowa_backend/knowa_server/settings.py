@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'events',
     'chat.apps.ChatConfig',
     'donations',
+    'chatbot',
 
     # Default Django Apps
     'django.contrib.admin',
