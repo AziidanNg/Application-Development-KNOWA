@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/chat_service.dart';
 import 'group_info_screen.dart';
+import 'message_info_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final int roomId;
@@ -21,14 +22,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   List<dynamic> _messages = [];
   Map<String, dynamic>? _pinnedMessage;
-  int? _currentUserId;
   Timer? _timer;
   bool _showScrollButton = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchCurrentUser();
     _fetchMessages();
     
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchMessages());
@@ -58,15 +57,6 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchCurrentUser() async {
-    try {
-      final userId = await _chatService.getCurrentUserId(); 
-      if (mounted) setState(() => _currentUserId = userId);
-    } catch (e) {
-      print("Could not fetch user ID: $e");
-    }
-  }
-
   Future<void> _fetchMessages() async {
     try {
       final msgs = await _chatService.getMessages(widget.roomId);
@@ -79,15 +69,7 @@ class _ChatScreenState extends State<ChatScreen> {
             _pinnedMessage = null;
           }
         });
-        bool hasUnread = msgs.any((m) => 
-            (m['is_read'] == false) && 
-            (m['is_me'] == false) // Only mark others' messages
-        );
-
-        if (hasUnread) {
-          // Call the API silently (don't await or block UI)
-          _chatService.markMessagesAsRead(widget.roomId);
-        }
+        _chatService.markMessagesAsRead(widget.roomId);
       }
     } catch (e) {
       // Silent error
@@ -154,7 +136,11 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: backgroundColor,
       appBar: AppBar(
         titleSpacing: 0,
-        // REMOVED HARDCODED GREEN -> Uses App Theme
+        scrolledUnderElevation: 0,
+        // 2. DARKER COLOR: You can use a specific dark teal or your primary color
+        // OR use your theme: Theme.of(context).primaryColorDark,
+        backgroundColor: darken(Theme.of(context).primaryColor, 0.01),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: InkWell(
           onTap: () => Navigator.push(
               context, 
@@ -251,7 +237,20 @@ class _ChatScreenState extends State<ChatScreen> {
                          leading: const Icon(Icons.push_pin), 
                          title: Text(isPinned ? 'Unpin Message' : 'Pin Message'), 
                          onTap: () { Navigator.pop(context); _togglePinMessage(msg['id']); }
-                       )
+                       ),
+
+                       // 2. NEW: INFO OPTION (Only for My messages)
+                       if (isMe) 
+                         ListTile(
+                           leading: const Icon(Icons.info_outline),
+                           title: const Text("Message Info"),
+                           onTap: () {
+                             Navigator.pop(context);
+                             Navigator.push(context, MaterialPageRoute(
+                               builder: (c) => MessageInfoScreen(messageId: msg['id'])
+                             ));
+                           }
+                         ),
                      ]));
                   },
                   child: Align(
@@ -341,4 +340,12 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+}
+
+// Helper function to make any color darker
+Color darken(Color color, [double amount = .1]) {
+  assert(amount >= 0 && amount <= 1);
+  final hsl = HSLColor.fromColor(color);
+  final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
+  return hslDark.toColor();
 }

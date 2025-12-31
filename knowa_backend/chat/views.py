@@ -80,14 +80,100 @@ class MarkMessagesReadView(APIView):
 
     def post(self, request, pk):
         room = get_object_or_404(ChatRoom, pk=pk)
+        user = request.user
         
-        # Logic: Update all messages in this room 
-        # that are NOT sent by me, and are currently unread.
-        updated_count = Message.objects.filter(
-            room=room,
-            is_read=False
-        ).exclude(
-            sender=request.user
-        ).update(is_read=True)
+        # 1. Add 'me' to the read list for all messages I haven't seen
+        unread_messages = Message.objects.filter(room=room).exclude(sender=user).exclude(read_by=user)
         
-        return Response({'status': 'success', 'updated': updated_count})
+        # 2. Calculate the "Target Audience" (Everyone in the chat)
+        potential_readers = set(room.participants.all())
+        if room.event:
+            event = room.event
+            potential_readers.add(event.organizer)
+            potential_readers.update(event.crew.all())
+            potential_readers.update(event.participants.all())
+            
+        # Convert to a Set of IDs
+        target_audience_ids = {u.id for u in potential_readers}
+
+        for msg in unread_messages:
+            msg.read_by.add(user)
+            
+            # --- UPDATED LOGIC ---
+            
+            # 1. Who has read it?
+            readers_ids = set(msg.read_by.values_list('id', flat=True))
+            
+            # 2. Define who MUST read it:
+            #    (Target Audience MINUS The Sender)
+            #    We don't care if the sender read it, they wrote it.
+            must_read_ids = target_audience_ids.copy()
+            if msg.sender_id in must_read_ids:
+                must_read_ids.remove(msg.sender_id)
+            
+            # 3. Are there any "Must Read" people who haven't read it yet?
+            remaining_unread = must_read_ids - readers_ids
+            
+            # 4. If NO ONE is left, turn Blue!
+            if not remaining_unread:
+                msg.is_read = True
+                msg.save()
+
+        return Response({'status': 'success', 'updated': unread_messages.count()})
+
+class MessageInfoView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        message = get_object_or_404(Message, pk=pk)
+        
+        if message.sender != request.user:
+            return Response({"error": "Only sender can view message info"}, status=status.HTTP_403_FORBIDDEN)
+
+        # HELPER: Get Smart Name (First Name -> Username -> Email-free)
+        def get_smart_name(user):
+            if user.first_name:
+                return user.first_name
+            if '@' in user.username:
+                return user.username.split('@')[0]
+            return user.username
+
+        # HELPER: Get Avatar Safely
+        def get_avatar_url(user):
+            if hasattr(user, 'profile'):
+                if hasattr(user.profile, 'avatar') and user.profile.avatar:
+                    return user.profile.avatar.url
+                # Add other field checks if needed (e.g. image, photo)
+            return None
+
+        # 1. Who has read it?
+        read_users = message.read_by.all()
+        read_data = [{
+            'username': get_smart_name(u), # Use smart name
+            'avatar': get_avatar_url(u)
+        } for u in read_users]
+
+        # 2. Who is in the chat?
+        potential_readers = set(message.room.participants.all())
+        if message.room.event:
+            event = message.room.event
+            potential_readers.add(event.organizer)
+            potential_readers.update(event.crew.all())
+            potential_readers.update(event.participants.all())
+
+        # 3. Who hasn't read it?
+        unread_data = []
+        for u in potential_readers:
+            # Exclude Sender (Me) and Readers
+            if u.id != request.user.id and u not in read_users:
+                unread_data.append({
+                    'username': get_smart_name(u), # Use smart name
+                    'avatar': get_avatar_url(u)
+                })
+
+        return Response({
+            'message': message.content,
+            'timestamp': message.timestamp,
+            'read_by': read_data,
+            'delivered_to': unread_data
+        })

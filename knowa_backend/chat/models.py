@@ -31,10 +31,13 @@ class Message(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
     
-    # 2. SOLVED: Pinning Feature
+    # KEEP THIS: It will now mean "Read by EVERYONE"
+    is_read = models.BooleanField(default=False) 
     is_pinned = models.BooleanField(default=False)
+
+    # NEW FIELD: Tracks individual users who saw the message
+    read_by = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='read_messages', blank=True)
 
     def __str__(self):
         return f"{self.sender.username}: {self.content[:20]}"
