@@ -74,3 +74,20 @@ class PinMessageView(APIView):
             'status': 'success', 
             'is_pinned': message.is_pinned
         })
+
+class MarkMessagesReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        room = get_object_or_404(ChatRoom, pk=pk)
+        
+        # Logic: Update all messages in this room 
+        # that are NOT sent by me, and are currently unread.
+        updated_count = Message.objects.filter(
+            room=room,
+            is_read=False
+        ).exclude(
+            sender=request.user
+        ).update(is_read=True)
+        
+        return Response({'status': 'success', 'updated': updated_count})

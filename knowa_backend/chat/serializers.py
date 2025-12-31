@@ -25,11 +25,30 @@ class ChatParticipantSerializer(serializers.ModelSerializer):
 
 # 2. Serializer for Messages
 class MessageSerializer(serializers.ModelSerializer):
-    sender_name = serializers.CharField(source='sender.username', read_only=True)
-    
+    sender_name = serializers.SerializerMethodField()
+    is_me = serializers.SerializerMethodField()  # <--- NEW FIELD
+
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'sender_name', 'content', 'timestamp', 'is_pinned']
+        # Add 'is_me' to the fields list
+        fields = ['id', 'sender', 'sender_name', 'content', 'timestamp', 'is_pinned', 'room', 'is_read', 'is_me']
+        read_only_fields = ['sender', 'room', 'id', 'timestamp', 'is_pinned', 'is_read', 'is_me']
+
+    def get_sender_name(self, obj):
+        # Your existing name logic
+        if obj.sender.first_name:
+            return obj.sender.first_name
+        username = obj.sender.username
+        if '@' in username:
+            return username.split('@')[0]
+        return username
+
+    # --- THE LOGIC TO CHECK IF "IT IS ME" ---
+    def get_is_me(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return obj.sender == request.user
+        return False
 
 # 3. RESTORED: Standard Serializer for Listing Chat Rooms
 class ChatRoomSerializer(serializers.ModelSerializer):

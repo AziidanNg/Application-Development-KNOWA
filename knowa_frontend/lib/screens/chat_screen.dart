@@ -2,7 +2,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/chat_service.dart';
-import 'group_info_screen.dart'; // Make sure to import the new screen we created
+import 'group_info_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final int roomId;
@@ -17,24 +17,54 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final ChatService _chatService = ChatService();
   final TextEditingController _controller = TextEditingController();
-  
+  final ScrollController _scrollController = ScrollController();
+
   List<dynamic> _messages = [];
-  Map<String, dynamic>? _pinnedMessage; // Variable to store the pinned message
+  Map<String, dynamic>? _pinnedMessage;
+  int? _currentUserId;
   Timer? _timer;
+  bool _showScrollButton = false;
 
   @override
   void initState() {
     super.initState();
+    _fetchCurrentUser();
     _fetchMessages();
-    // Refresh messages every 3 seconds (Polling)
+    
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchMessages());
+
+    // SCROLL LISTENER FIX
+    _scrollController.addListener(() {
+      if (!_scrollController.hasClients) return;
+      
+      // Logic: Show button if we are NOT at the bottom (user scrolled up)
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.offset;
+      
+      // If user is more than 300 pixels away from the bottom, show button
+      if (maxScroll - currentScroll > 300) {
+        if (!_showScrollButton) setState(() => _showScrollButton = true);
+      } else {
+        if (_showScrollButton) setState(() => _showScrollButton = false);
+      }
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchCurrentUser() async {
+    try {
+      final userId = await _chatService.getCurrentUserId(); 
+      if (mounted) setState(() => _currentUserId = userId);
+    } catch (e) {
+      print("Could not fetch user ID: $e");
+    }
   }
 
   Future<void> _fetchMessages() async {
@@ -43,20 +73,24 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() {
           _messages = msgs;
-          // Find the latest message where 'is_pinned' is true (if any)
-          // The backend should send 'is_pinned': true/false
           try {
-            _pinnedMessage = msgs.firstWhere(
-              (m) => m['is_pinned'] == true, 
-              orElse: () => null
-            );
+            _pinnedMessage = msgs.firstWhere((m) => m['is_pinned'] == true, orElse: () => null);
           } catch (e) {
             _pinnedMessage = null;
           }
         });
+        bool hasUnread = msgs.any((m) => 
+            (m['is_read'] == false) && 
+            (m['is_me'] == false) // Only mark others' messages
+        );
+
+        if (hasUnread) {
+          // Call the API silently (don't await or block UI)
+          _chatService.markMessagesAsRead(widget.roomId);
+        }
       }
     } catch (e) {
-      // Handle error silently during polling
+      // Silent error
     }
   }
 
@@ -65,159 +99,241 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.isEmpty) return;
     _controller.clear();
     await _chatService.sendMessage(widget.roomId, text);
-    _fetchMessages(); // Refresh immediately
+    _fetchMessages();
+    
+    // Auto scroll to bottom after sending
+    Future.delayed(const Duration(milliseconds: 300), _scrollToBottom);
   }
 
-  // Placeholder for Pinning Logic
-  void _togglePinMessage(int messageId, bool currentStatus) async {
-    // Call your API here to toggle pin status
-    // await _chatService.pinMessage(messageId, !currentStatus);
-    
-    // For now, just print to console so you can see it works
-    print("Pinning message $messageId. New status: ${!currentStatus}");
-    _fetchMessages(); // Refresh to show changes
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent + 100,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _scrollToPinnedMessage() {
+    if (_pinnedMessage == null) return;
+    final index = _messages.indexWhere((m) => m['id'] == _pinnedMessage!['id']);
+    if (index != -1) {
+      double offset = index * 70.0; 
+      if (_scrollController.hasClients) {
+         _scrollController.jumpTo(offset); // Zero delay
+      }
+    }
+  }
+
+  void _togglePinMessage(int messageId) async {
+    try {
+      await _chatService.togglePinMessage(messageId);
+      _fetchMessages();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to pin message")));
+    }
+  }
+
+  Widget _buildDoubleTick(bool isRead) {
+    return Icon(
+      Icons.done_all, 
+      size: 16, 
+      // Use Primary Color for read, Grey for unread
+      color: isRead ? Theme.of(context).primaryColor : Colors.grey
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // GET SYSTEM COLORS
+    final primaryColor = Theme.of(context).primaryColor;
+    final backgroundColor = Colors.grey[100]; // Neutral background
+
     return Scaffold(
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         titleSpacing: 0,
-        // 1. CLICKABLE HEADER FOR INFO
+        // REMOVED HARDCODED GREEN -> Uses App Theme
         title: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => GroupInfoScreen(
-                  chatId: widget.roomId, 
-                  chatName: widget.roomName
-                ),
-              ),
-            );
-          },
+          onTap: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (c) => GroupInfoScreen(chatId: widget.roomId, chatName: widget.roomName))
+          ),
           child: Row(
             children: [
               CircleAvatar(
                 backgroundColor: Colors.white24,
-                child: Text(widget.roomName.isNotEmpty ? widget.roomName[0] : "?"),
+                child: Text(widget.roomName.isNotEmpty ? widget.roomName[0] : "?", style: const TextStyle(color: Colors.white)),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.roomName, style: const TextStyle(fontSize: 16)),
-                    const Text("Tap for group info", style: TextStyle(fontSize: 12, color: Colors.white70)),
-                  ],
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.roomName, style: const TextStyle(fontSize: 16)),
+                  const Text("Tap for info", style: TextStyle(fontSize: 12, color: Colors.white70)),
+                ],
               ),
             ],
           ),
         ),
       ),
+      
+      // 1. Move to the Bottom Right (Standard standard)
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
+      // 2. Add padding to push it up above the text box
+      floatingActionButton: _showScrollButton 
+          ? Padding(
+              // 'bottom: 80' clears the text input area
+              // 'right: 10' keeps it slightly away from the edge
+              padding: const EdgeInsets.only(bottom: 80, right: 10), 
+              child: SizedBox(
+                height: 40, // Force a small size
+                width: 40,
+                child: FloatingActionButton(
+                  mini: true, // Makes the button smaller
+                  backgroundColor: Colors.white,
+                  elevation: 4, // Shadow to make it stand out
+                  shape: const CircleBorder(), // Ensures it is round
+                  child: Icon(Icons.keyboard_arrow_down, color: primaryColor),
+                  onPressed: _scrollToBottom,
+                ),
+              ),
+            )
+          : null,
+
       body: Column(
         children: [
-          // 2. PINNED MESSAGE BANNER
+          // PINNED BANNER
           if (_pinnedMessage != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.yellow[100],
-                border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.push_pin, size: 16, color: Colors.orange),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _pinnedMessage!['content'] ?? "Pinned Message",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500),
+            InkWell(
+              onTap: _scrollToPinnedMessage,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 2))],
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.push_pin, size: 16, color: primaryColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: Text("Pinned: ${_pinnedMessage!['content']}", 
+                        maxLines: 1, overflow: TextOverflow.ellipsis, 
+                        style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500))
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
-          // 3. MESSAGE LIST
+          // CHAT LIST
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.all(16),
               itemCount: _messages.length,
               itemBuilder: (ctx, i) {
                 final msg = _messages[i];
-                final isPinned = msg['is_pinned'] ?? false;
+                // Safety check: if currentUserId is null, default to false (Left side)
+                final bool isMe = msg['is_me'] ?? false;
+                final bool isPinned = msg['is_pinned'] ?? false;
+                final String time = msg['timestamp'].toString().substring(11, 16);
 
                 return GestureDetector(
-                  // Long press to show Pin Option
                   onLongPress: () {
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (context) => Wrap(
+                     showModalBottomSheet(context: context, builder: (c) => Wrap(children: [
+                       ListTile(
+                         leading: const Icon(Icons.push_pin), 
+                         title: Text(isPinned ? 'Unpin Message' : 'Pin Message'), 
+                         onTap: () { Navigator.pop(context); _togglePinMessage(msg['id']); }
+                       )
+                     ]));
+                  },
+                  child: Align(
+                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        // Color Logic: "Me" gets Primary Color (light), "Other" gets White
+                        color: isMe ? primaryColor.withOpacity(0.1) : Colors.white,
+                        border: isPinned ? Border.all(color: Colors.orange) : null,
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(12),
+                          topRight: const Radius.circular(12),
+                          bottomLeft: isMe ? const Radius.circular(12) : Radius.zero,
+                          bottomRight: isMe ? Radius.zero : const Radius.circular(12),
+                        ),
+                        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 2, offset: const Offset(0, 1))],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ListTile(
-                            leading: const Icon(Icons.push_pin),
-                            title: Text(isPinned ? 'Unpin Message' : 'Pin Message'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              _togglePinMessage(msg['id'], isPinned);
-                            },
+                          if (!isMe)
+                            Text(msg['sender_name'] ?? 'User', style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 12)),
+                          
+                          Text(msg['content'] ?? '', style: const TextStyle(fontSize: 16)),
+                          
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(time, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                              if (isMe) ...[
+                                const SizedBox(width: 4),
+                                _buildDoubleTick(msg['is_read'] ?? false),
+                              ]
+                            ],
                           ),
                         ],
                       ),
-                    );
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isPinned ? Colors.yellow[50] : Colors.grey[200], // Highlight if pinned
-                      border: isPinned ? Border.all(color: Colors.orange.withOpacity(0.3)) : null,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              msg['sender_name'] ?? 'Unknown', 
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800], fontSize: 12)
-                            ),
-                            if (isPinned) 
-                              const Icon(Icons.push_pin, size: 12, color: Colors.orange)
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(msg['content'] ?? ''),
-                      ],
                     ),
                   ),
                 );
               },
             ),
           ),
-          
-          // 4. INPUT FIELD
+
+          // INPUT AREA
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Colors.grey[200]!)),
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: "Type a message...", 
-                      border: OutlineInputBorder()
+                    keyboardType: TextInputType.multiline,
+                    maxLines: null,
+                    textInputAction: TextInputAction.newline,
+                    decoration: InputDecoration(
+                      hintText: "Type a message...",
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                      filled: true,
+                      fillColor: Colors.grey[100],
                     ),
                   ),
                 ),
-                IconButton(icon: const Icon(Icons.send), onPressed: _sendMessage),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  backgroundColor: primaryColor, // Matches System Theme
+                  radius: 24,
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                    onPressed: _sendMessage,
+                  ),
+                ),
               ],
             ),
           ),
