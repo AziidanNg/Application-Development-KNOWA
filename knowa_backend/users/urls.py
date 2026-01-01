@@ -24,6 +24,7 @@ from .views import (
     UserSelectionListView,
     AIChatbotView,
     InterviewActionView,
+    AdminInterviewHistoryView,
 )
 
 urlpatterns = [
@@ -66,4 +67,5 @@ urlpatterns = [
     path('admin/user-selection-list/', UserSelectionListView.as_view()),
     path('chatbot/', AIChatbotView.as_view(), name='ai-chatbot'),
     path('admin/interview-result/<int:pk>/', InterviewActionView.as_view(), name='interview-result'),
+    path('admin/interviews/history/', AdminInterviewHistoryView.as_view(), name='admin-interview-history'),
 ]

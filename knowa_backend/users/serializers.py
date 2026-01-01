@@ -147,11 +147,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 class InterviewSerializer(serializers.ModelSerializer):
-    applicant_name = serializers.CharField(source='applicant.first_name', read_only=True)
-
+    applicant_name = serializers.CharField(source='applicant.username', read_only=True)
+    
     class Meta:
         model = Interview
-        fields = ['id', 'applicant', 'applicant_name', 'date_time', 'location', 'meeting_link', 'status']
+        fields = ['id', 'applicant', 'applicant_name', 'date_time', 'status', 'meeting_link', 'report']
 
 # --- REPLACE THE OLD AdminUserSerializer ---
 class AdminUserSerializer(serializers.ModelSerializer):

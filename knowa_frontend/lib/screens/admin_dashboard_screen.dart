@@ -10,6 +10,7 @@ import 'package:knowa_frontend/models/admin_stats.dart';
 import 'package:knowa_frontend/screens/notification_screen.dart'; // <--- 1. IMPORT THIS
 import 'package:intl/intl.dart'; 
 import 'package:knowa_frontend/main.dart';
+import 'package:knowa_frontend/screens/admin_interview_history_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -176,11 +177,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 12),
             _buildActionButton(
-              title: 'Create Event',
+              title: 'View Interview Reports',
               onPressed: () { 
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const AdminManageEventsScreen(),
+                    builder: (context) => const AdminInterviewHistoryScreen(),
                   ),
                 );
               },

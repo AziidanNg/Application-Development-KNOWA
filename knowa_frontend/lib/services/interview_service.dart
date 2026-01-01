@@ -49,4 +49,32 @@ class InterviewService {
       return false;
     }
   }
+
+  Future<List<dynamic>> getInterviewHistory() async {
+    final url = Uri.parse('$baseUrl/users/admin/interviews/history/');
+    
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access'); // Use correct key
+
+    if (token == null) return [];
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return [];
+      }
+    } catch (e) {
+      print("Error fetching history: $e");
+      return [];
+    }
+  }
 }

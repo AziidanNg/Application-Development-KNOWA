@@ -506,6 +506,20 @@ class InterviewActionView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
+class AdminInterviewHistoryView(generics.ListAPIView):
+    """
+    Returns a list of all past interviews (Completed or Rejected)
+    for the Admin to review reports.
+    """
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = InterviewSerializer
+
+    def get_queryset(self):
+        # Filter for finished interviews, newest first
+        return Interview.objects.filter(
+            status__in=['COMPLETED', 'REJECTED']
+        ).order_by('-date_time')
+
 class NotificationListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = NotificationSerializer
