@@ -15,7 +15,7 @@ from rest_framework import status, generics, permissions
 
 # --- 3. LOCAL APP IMPORTS (Models & Serializers) ---
 from .models import User, UserProfile, Interview, Notification
-from .utils import send_notification
+from .utils import send_notification, notify_all_admins
 from .serializers import (
     UserRegistrationSerializer, 
     AdminUserSerializer, 
@@ -28,6 +28,7 @@ from .serializers import (
 # --- 4. EXTERNAL APP IMPORTS (Events & Donations) ---
 from events.models import Event, Meeting
 from donations.models import Donation, DonationStatus
+from chat.models import ChatRoom
 
 
 # ==========================================
@@ -183,9 +184,12 @@ class InterviewUserView(APIView):
     def post(self, request, pk, format=None):
         try:
             user = User.objects.get(pk=pk)
+            
+            # 1. Update Status
             user.member_status = User.MemberStatus.INTERVIEW
             user.save()
 
+            # 2. Get Interview Details
             date_time = request.data.get('date_time')
             meeting_link = request.data.get('meeting_link', '')
             interviewer_id = request.data.get('interviewer_id') 
@@ -197,18 +201,48 @@ class InterviewUserView(APIView):
                 except User.DoesNotExist:
                     pass
 
+            # 3. Create/Update Interview Record
             if date_time:
-                Interview.objects.update_or_create(
+                interview_instance, created = Interview.objects.update_or_create(
                     applicant=user,
                     defaults={
                         'scheduler': request.user,
-                        'interviewer': interviewer,
+                        'interviewer': interviewer, # The staff member chosen
                         'date_time': date_time,
                         'meeting_link': meeting_link,
                         'status': 'SCHEDULED'
                     }
                 )
-            return Response({'status': 'User set for interview'}, status=status.HTTP_200_OK)
+
+                # ====================================================
+                # AUTOMATIC CHAT ROOM CREATION
+                # ====================================================
+                # Check if room exists
+                chat_room, room_created = ChatRoom.objects.get_or_create(
+                    interview=interview_instance,
+                    defaults={
+                        'type': ChatRoom.RoomType.INTERVIEW,
+                        'name': f"Interview: {user.first_name} - {interview_instance.status}"
+                    }
+                )
+
+                if room_created:
+                    # Add Participants: Applicant + Admin (Scheduler)
+                    chat_room.participants.add(user)
+                    chat_room.participants.add(request.user)
+                    
+                    # Add Assigned Interviewer (if different from Admin)
+                    if interviewer and interviewer != request.user:
+                        chat_room.participants.add(interviewer)
+
+                    print(f"Created Interview Room ID: {chat_room.id}")
+                # ====================================================
+
+            return Response({
+                'status': 'Interview scheduled and Chat Room created',
+                'chat_room_id': chat_room.id if 'chat_room' in locals() else None
+            }, status=status.HTTP_200_OK)
+
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 

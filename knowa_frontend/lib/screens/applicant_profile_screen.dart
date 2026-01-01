@@ -39,21 +39,28 @@ class _ApplicantProfileScreenState extends State<ApplicantProfileScreen> {
        reason: reason,
        date: date,
        link: link,
-       staffId: staffId 
+       interviewerId: staffId
     );
 
     setState(() { _isLoading = false; });
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? 'User updated successfully' : 'Failed to update user'),
-          backgroundColor: success ? Colors.green : Colors.red,
-        ),
-      );
-      if (success) {
-        Navigator.pop(context, true); 
+    if (success) {
+      if (action == 'Interview') {
+         // --- NEW FEEDBACK ---
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(
+             content: Text('Interview Scheduled & Chat Room Created!'),
+             backgroundColor: Colors.green,
+           ),
+         );
+      } else {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('User status updated to $action'), backgroundColor: Colors.green),
+         );
       }
+      Navigator.pop(context, true); // Return success
+    } else {
+      // ... error handling
     }
   }
 

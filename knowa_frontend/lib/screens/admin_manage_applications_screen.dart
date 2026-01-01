@@ -32,40 +32,51 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
 
   // --- UPDATED UPDATE LOGIC (Handles Interview Data) ---
   void _updateUser(int userId, String action, String applicationType, {String? reason, String? date, String? link, int? staffId}) async {
-    setState(() { _isLoading = true; }); // Show loading if needed (mostly for snackbar timing)
+    setState(() { _isLoading = true; });
 
     String finalAction = action;
-
+    
+    // Map the simple action to the backend status enum
     if (action == 'Approve') {
-      finalAction = applicationType == 'MEMBERSHIP' ? 'APPROVE_MEMBER' : 'APPROVE_VOLUNTEER';
+      finalAction = applicationType == 'MEMBERSHIP' 
+          ? 'APPROVE_MEMBER' 
+          : 'APPROVE_VOLUNTEER';
     } else if (action == 'Reject') {
       finalAction = 'REJECT';
     } else if (action == 'Interview') {
       finalAction = 'INTERVIEW';
     }
 
-    // Pass all data to the service
     bool success = await _authService.updateUserStatus(
-      userId, 
-      finalAction, 
-      reason: reason,
-      date: date,
-      link: link,
-      staffId: staffId
+       userId,
+       finalAction,
+       reason: reason,
+       date: date,
+       link: link,
+       interviewerId: staffId // <--- FIX: Change 'staffId' to 'interviewerId' here
     );
-    
+
     setState(() { _isLoading = false; });
 
-    if (mounted) {
-       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? 'User updated successfully' : 'Failed to update user status'),
-          backgroundColor: success ? Colors.green : Colors.red,
-        ),
-      );
-    }
     if (success) {
-      _loadPendingUsers(); 
+       // --- NEW FEEDBACK ---
+       if (action == 'Interview') {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(
+             content: Text('Interview Scheduled & Chat Room Created!'),
+             backgroundColor: Colors.green,
+           ),
+         );
+       } else {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('User status updated to $action'), backgroundColor: Colors.green),
+         );
+       }
+      _loadPendingUsers(); // Refresh the list
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update status'), backgroundColor: Colors.red),
+      );
     }
   }
 

@@ -296,54 +296,60 @@ Future<List<PendingUser>> getPendingUsers() async {
 // --- ADMIN: UPDATE USER STATUS ---
 // This one function will handle approve, reject, and interview
 // It now accepts 'APPROVE_MEMBER' and 'APPROVE_VOLUNTEER'
-Future<bool> updateUserStatus(int userId, String action, {String? reason, String? date, String? link, int? staffId}) async {
+Future<bool> updateUserStatus(
+    int userId, 
+    String status, 
+    {
+      String? reason, // <--- Renamed from 'rejectionReason' to match your screens
+      String? date,   // <--- Renamed from 'interviewDate' to match your screens
+      String? link,   // <--- Renamed from 'meetingLink' to match your screens
+      int? interviewerId, 
+    }
+  ) async {
     final token = await _storage.read(key: 'access_token');
     
-    // 1. Determine the endpoint
-    String endpoint = '';
-    if (action == 'APPROVE_MEMBER') {
-      endpoint = 'admin/approve-member/$userId/';
-    } else if (action == 'APPROVE_VOLUNTEER') {
-      endpoint = 'admin/approve-volunteer/$userId/';
-    } else if (action == 'REJECT') {
-      endpoint = 'admin/reject/$userId/';
-    } else if (action == 'INTERVIEW') { // Removed '&& date != null' check here to be safe
-      endpoint = 'admin/interview/$userId/';
+    // Determine the correct endpoint
+    String urlStr;
+    if (status == 'INTERVIEW') {
+      urlStr = '${_baseUrl}admin/interview/$userId/';
+    } else if (status == 'REJECT') {
+      urlStr = '${_baseUrl}admin/reject/$userId/';
+    } else if (status == 'APPROVE_MEMBER') {
+      urlStr = '${_baseUrl}admin/approve-member/$userId/';
+    } else if (status == 'APPROVE_VOLUNTEER') {
+      urlStr = '${_baseUrl}admin/approve-volunteer/$userId/';
+    } else {
+      return false; 
     }
-
-    // 2. Build the Body Data dynamically
-    Map<String, dynamic> bodyData = {};
-
-    if (action == 'REJECT' && reason != null) {
-      bodyData['reason'] = reason;
-    }
-    
-    // --- THIS WAS MISSING ---
-    if (action == 'INTERVIEW') {
-      if (date != null) bodyData['date_time'] = date;
-      if (link != null) bodyData['meeting_link'] = link;
-      if (staffId != null) bodyData['interviewer_id'] = staffId;
-    }
-    // ------------------------
 
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl$endpoint'),
+        Uri.parse(urlStr),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        // 3. Send the JSON if we have any data to send
-        body: bodyData.isNotEmpty ? jsonEncode(bodyData) : null,
+        body: jsonEncode({
+          'status': status, 
+          'reason': reason, // Send 'reason' to backend
+          'date_time': date, // Map 'date' -> 'date_time' for backend
+          'meeting_link': link, // Map 'link' -> 'meeting_link' for backend
+          'interviewer_id': interviewerId, 
+        }),
       );
 
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("Failed to update status: ${response.body}");
+        return false;
+      }
     } catch (e) {
-      print("Error updating user: $e");
+      print("Error updating status: $e");
       return false;
     }
   }
-
+  
 // This allows the user to upload their payment receipt
 Future<bool> uploadReceipt(File receiptFile) async {
   final token = await _storage.read(key: 'access_token');

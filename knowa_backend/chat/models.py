@@ -4,27 +4,54 @@ from django.conf import settings
 from events.models import Event
 
 class ChatRoom(models.Model):
-    event = models.OneToOneField(
+    # --- 1. NEW: Define Room Types ---
+    class RoomType(models.TextChoices):
+        EVENT = 'EVENT', 'Event Group'
+        INTERVIEW = 'INTERVIEW', 'Interview Room'
+        DIRECT = 'DIRECT', 'Direct Message'
+
+    type = models.CharField(
+        max_length=20, 
+        choices=RoomType.choices, 
+        default=RoomType.EVENT
+    )
+    # ---------------------------------
+
+    description = models.TextField(blank=True, null=True)
+
+    name = models.CharField(max_length=255, blank=True) # Explicit name for non-event chats
+
+    event = models.ForeignKey( # Changed from OneToOne to ForeignKey for flexibility
         Event, 
         on_delete=models.CASCADE, 
         null=True, 
         blank=True, 
+        related_name="chat_rooms"
+    )
+
+    # --- 2. NEW: Link to Interview (String reference to avoid circular import) ---
+    interview = models.OneToOneField(
+        'users.Interview',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="chat_room"
     )
+
     participants = models.ManyToManyField(
         settings.AUTH_USER_MODEL, 
         related_name="chat_rooms",
         blank=True
     )
+    
     created_at = models.DateTimeField(auto_now_add=True)
-    # Optional: Add a specific chat description if different from Event description
-    description = models.TextField(blank=True, null=True) 
 
     def __str__(self):
-        # 1. SOLVED: The Naming Convention Logic
+        if self.type == 'INTERVIEW':
+             return self.name or f"Interview Chat {self.pk}"
         if self.event:
             return f"{self.event.title} (Event)"
-        return f"Direct Chat ({self.pk})"
+        return f"Chat {self.pk}"
 
 class Message(models.Model):
     room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name="messages")

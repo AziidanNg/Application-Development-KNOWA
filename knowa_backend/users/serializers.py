@@ -15,6 +15,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     resume_url = serializers.SerializerMethodField()
     identification_url = serializers.SerializerMethodField()
     payment_receipt_url = serializers.SerializerMethodField()
+    status = serializers.CharField(source='user.member_status', read_only=True)
 
     class Meta:
         model = UserProfile
@@ -29,6 +30,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'resume', 
             'identification',
             'payment_receipt', # <-- Add this field
+            'status',
 
             # --- NEW: These are for downloading (read-only) ---
             'resume_url',
