@@ -99,6 +99,7 @@ class AuthService {
 
         // 3. Save user data to SharedPreferences
         final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access', accessToken); // We save it as 'access' to match InterviewService
         await prefs.setString('username', userData['username']);
         await prefs.setString('member_status', userData['member_status']);
         await prefs.setBool('is_staff', userData['is_staff']);

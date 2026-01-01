@@ -8,6 +8,7 @@ import 'package:knowa_frontend/screens/admin_create_meeting_screen.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 import 'package:knowa_frontend/screens/event_detail_screen.dart'; 
 import 'package:knowa_frontend/services/event_service.dart'; 
+import 'package:knowa_frontend/widgets/interview_action_buttons.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -157,13 +158,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
     String link = item['meeting_link'] ?? '';
     String location = item['location'] ?? '';
     String time = item['time'] ?? '';
+    
+    // 1. Identify Types
     bool isMeeting = item['type'] == 'MEETING';
     
-    // Only show admin actions if it's a meeting AND user is admin
+    // --- NEW: Identify Interview ---
+    bool isInterview = item['type'] == 'INTERVIEW'; 
+    // Ensure your backend sends 'applicant_id'
+    int applicantId = item['applicant_id'] ?? 0; 
+    // -------------------------------
+
+    // Only show admin actions (Edit/Delete) if it's a meeting AND user is admin
     bool showAdminActions = _isAdmin && isMeeting; 
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // Use this so the sheet can grow
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -178,7 +188,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               Row(
                 children: [
                   Icon(
-                    isMeeting ? Icons.groups : Icons.video_call,
+                    // Update Icon: Groups for Meeting, Video for Interview
+                    isMeeting ? Icons.groups : (isInterview ? Icons.video_camera_front : Icons.event),
                     color: Colors.blue.shade700,
                     size: 28,
                   ),
@@ -187,7 +198,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   ),
                   
-                  // --- NEW: EDIT & DELETE BUTTONS ---
+                  // --- YOUR EXISTING EDIT/DELETE BUTTONS (RESTORED) ---
                   if (showAdminActions) ...[
                     IconButton(
                       icon: const Icon(Icons.edit, color: Colors.grey),
@@ -229,11 +240,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       },
                     ),
                   ]
-                  // ----------------------------------
+                  // ----------------------------------------------------
                 ],
               ),
-              // ... rest of the UI (Time, Location, Description) remains the same ...
+              
               const SizedBox(height: 16),
+              
+              // Time Row
               Row(
                 children: [
                   const Icon(Icons.access_time, size: 20, color: Colors.grey),
@@ -241,7 +254,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   Text(time, style: const TextStyle(fontSize: 16)),
                 ],
               ),
+              
               const SizedBox(height: 12),
+              
+              // Link / Location Logic
               if (link.isNotEmpty) 
                 InkWell(
                   onTap: () async {
@@ -270,17 +286,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Text(location, style: const TextStyle(fontSize: 16)),
                   ],
                 ),
+                
               const SizedBox(height: 24),
               const Text("Description", style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text(description, style: TextStyle(color: Colors.grey[800], height: 1.4)),
+              
               const SizedBox(height: 32),
+
+              // --- NEW: INTERVIEWER ACTIONS (The part we added today) ---
+              if (_isAdmin && isInterview && applicantId != 0) ...[
+                 const Divider(),
+                 const SizedBox(height: 10),
+                 const Text("Interviewer Decision", 
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                 const SizedBox(height: 10),
+                 
+                 InterviewActionButtons(
+                    applicantId: applicantId, 
+                    onSuccess: () {
+                       Navigator.pop(context); // Close the sheet
+                       _loadSchedule(); // Refresh the calendar
+                    },
+                 ),
+                 const SizedBox(height: 20),
+              ],
+              // ----------------------------------------------------------
             ],
           ),
         );
       },
     );
-  }
+}
 
   @override
   Widget build(BuildContext context) {

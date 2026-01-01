@@ -134,6 +134,7 @@ class Interview(models.Model):
     location = models.CharField(max_length=255, default="Google Meet")
     meeting_link = models.URLField(blank=True, null=True)
     status = models.CharField(max_length=20, default='SCHEDULED')
+    report = models.TextField(blank=True, null=True, help_text="Interviewer's notes/report")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

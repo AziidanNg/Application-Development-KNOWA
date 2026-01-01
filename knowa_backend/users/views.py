@@ -373,6 +373,7 @@ class MyScheduleView(APIView):
 
             schedule.append({
                 'id': i.id,
+                'applicant_id': i.applicant.id,
                 'title': title,
                 'date': i.date_time.date(),
                 'time': i.date_time.strftime("%I:%M %p"),
@@ -419,6 +420,91 @@ class MyScheduleView(APIView):
             })
 
         return Response(schedule, status=status.HTTP_200_OK)
+
+class InterviewActionView(APIView):
+    """
+    Handles the result of an interview (Pass/Fail) AND saves the report.
+    Updates BOTH the Interview status and the User status.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            # 1. Get the Applicant (User)
+            applicant = User.objects.get(pk=pk)
+            
+            # 2. Find the interview for this applicant
+            if not hasattr(applicant, 'interview'):
+                 return Response({'error': "No interview found for this user."}, status=404)
+            
+            interview = applicant.interview
+
+            # --- DEBUG PRINTS (To fix the Auth issue) ---
+            print(f"DEBUG: Request User: {request.user.username} (ID: {request.user.id})")
+            print(f"DEBUG: Is Superuser? {request.user.is_superuser}")
+            print(f"DEBUG: Is Staff? {request.user.is_staff}")
+            print(f"DEBUG: Interview Scheduler: {interview.scheduler}")
+            print(f"DEBUG: Assigned Interviewer: {interview.interviewer}")
+            # --------------------------------------------
+
+            # 3. SECURITY CHECK: Who is clicking the button?
+            is_authorized = (
+                request.user.is_superuser or 
+                request.user.is_staff or
+                request.user == interview.scheduler or 
+                request.user == interview.interviewer
+            )
+
+            if not is_authorized:
+                return Response({'error': "You are not authorized to grade this interview."}, status=403)
+
+            # 4. Get the action AND the report text
+            action = request.data.get('action') 
+            report_text = request.data.get('report', '') 
+
+            # Save the report if provided
+            if report_text:
+                interview.report = report_text
+
+            if action == 'pass':
+                # --- LOGIC FOR PASSING ---
+                applicant.member_status = User.MemberStatus.APPROVED_UNPAID
+                applicant.save()
+
+                interview.status = 'COMPLETED'
+                interview.save() # Saves status + report
+
+                send_notification(
+                    applicant, 
+                    "Interview Passed!", 
+                    "Congratulations! You passed the interview. Please proceed to the dashboard to pay your membership fee.", 
+                    "SUCCESS"
+                )
+                
+                return Response({'status': 'User passed. Report saved.'}, status=status.HTTP_200_OK)
+
+            elif action == 'fail':
+                # --- LOGIC FOR FAILING ---
+                applicant.member_status = User.MemberStatus.REJECTED
+                applicant.save()
+
+                interview.status = 'REJECTED'
+                interview.save() # Saves status + report
+
+                send_notification(
+                    applicant, 
+                    "Application Update", 
+                    "Thank you for your interest. Unfortunately, your application was not successful at this time.", 
+                    "ERROR"
+                )
+
+                return Response({'status': 'User rejected. Report saved.'}, status=status.HTTP_200_OK)
+
+            else:
+                return Response({'error': "Invalid action. Please send 'pass' or 'fail'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 class NotificationListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]

@@ -22,7 +22,8 @@ from .views import (
     NotificationListView,
     MarkNotificationReadView,
     UserSelectionListView,
-    AIChatbotView
+    AIChatbotView,
+    InterviewActionView,
 )
 
 urlpatterns = [
@@ -63,5 +64,6 @@ urlpatterns = [
     path('notifications/', NotificationListView.as_view(), name='notifications'),
     path('notifications/<int:pk>/read/', MarkNotificationReadView.as_view(), name='read-notification'),
     path('admin/user-selection-list/', UserSelectionListView.as_view()),
-    path('chatbot/', AIChatbotView.as_view(), name='ai-chatbot')
+    path('chatbot/', AIChatbotView.as_view(), name='ai-chatbot'),
+    path('admin/interview-result/<int:pk>/', InterviewActionView.as_view(), name='interview-result'),
 ]
