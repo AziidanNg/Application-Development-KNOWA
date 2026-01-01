@@ -1,7 +1,8 @@
-// lib/services/chat_service.dart
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+// --- FIX 1: ADD THIS IMPORT ---
+import 'package:shared_preferences/shared_preferences.dart'; 
 
 class ChatService {
   // NOTE: Change to your IP (10.0.2.2 for Emulator) or deployed URL
@@ -18,10 +19,8 @@ class ChatService {
     throw Exception('Failed to load chats');
   }
 
-  // --- NEW METHOD: Fixes the error in Group Info Screen ---
   Future<Map<String, dynamic>> getGroupDetails(int roomId) async {
     final token = await _storage.read(key: 'access_token');
-    // This assumes your Django URL is configured as /api/chat/rooms/<id>/
     final response = await http.get(
       Uri.parse('$_baseUrl/rooms/$roomId/'), 
       headers: {'Authorization': 'Bearer $token'},
@@ -56,10 +55,8 @@ class ChatService {
     );
   }
 
-  // --- NEW METHOD: For the Pinning Feature ---
   Future<void> togglePinMessage(int messageId) async {
     final token = await _storage.read(key: 'access_token');
-    // You will need to add this endpoint to your Django urls.py later
     final response = await http.post(
       Uri.parse('$_baseUrl/messages/$messageId/pin/'),
       headers: {'Authorization': 'Bearer $token'},
@@ -93,6 +90,84 @@ class ChatService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to load info');
+    }
+  }
+
+  // 1. Get List of Users to Chat With
+  Future<List<dynamic>> getUserOptions() async {
+    final url = Uri.parse('http://10.0.2.2:8000/api/users/admin/user-options/'); 
+    
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access');
+
+    if (token == null) return [];
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // 2. Create the Chat Room
+  Future<bool> createChatRoom(String name, List<int> participantIds, String type) async {
+    // --- FIX 2: Use _baseUrl (with underscore) ---
+    final url = Uri.parse('$_baseUrl/create/'); 
+    
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access');
+
+    if (token == null) return false;
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'name': name,
+          'participants': participantIds,
+          'type': type
+        }),
+      );
+      return response.statusCode == 201;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteChatRoom(int roomId) async {
+    final token = await _storage.read(key: 'access_token');
+    
+    // Change URL to match your backend
+    final url = Uri.parse('$_baseUrl/rooms/$roomId/delete/');
+    
+    try {
+      final response = await http.delete(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      // 204 No Content means successful deletion
+      return response.statusCode == 204;
+    } catch (e) {
+      print("Error deleting chat: $e");
+      return false;
     }
   }
 }

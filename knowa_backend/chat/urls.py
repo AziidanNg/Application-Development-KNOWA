@@ -6,7 +6,9 @@ from .views import (
     MessageListView, 
     PinMessageView,
     MarkMessagesReadView,
-    MessageInfoView
+    MessageInfoView,
+    CreateChatRoomView,
+    DeleteChatRoomView
 )
 
 urlpatterns = [
@@ -17,4 +19,6 @@ urlpatterns = [
     path('messages/<int:pk>/pin/', PinMessageView.as_view(), name='message-pin'),
     path('rooms/<int:pk>/read/', MarkMessagesReadView.as_view(), name='mark-read'),
     path('messages/<int:pk>/info/', MessageInfoView.as_view(), name='message-info'),
+    path('create/', CreateChatRoomView.as_view(), name='create-chat'),
+    path('rooms/<int:pk>/delete/', DeleteChatRoomView.as_view(), name='delete-chat-room'),
 ]

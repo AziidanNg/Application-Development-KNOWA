@@ -640,3 +640,23 @@ class AIChatbotView(APIView):
         except Exception as e:
             print(f"CRITICAL CHATBOT ERROR: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class UserOptionsView(APIView):
+    """
+    Returns a list of users (Admins & Members) that can be added to a chat.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        # Fetch Staff and Approved Members, excluding the current user
+        users = User.objects.filter(
+            Q(is_staff=True) | Q(member_status=User.MemberStatus.MEMBER)
+        ).exclude(id=request.user.id)
+
+        data = []
+        for u in users:
+            role = "Admin" if u.is_staff else "Member"
+            name = u.first_name if u.first_name else u.username
+            data.append({'id': u.id, 'name': name, 'role': role, 'username': u.username})
+            
+        return Response(data, status=status.HTTP_200_OK)

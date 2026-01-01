@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import ChatRoom, Message
 from django.contrib.auth import get_user_model
+from users.serializers import UserSerializer
 
 User = get_user_model()
 
@@ -52,12 +53,39 @@ class MessageSerializer(serializers.ModelSerializer):
 
 # 3. RESTORED: Standard Serializer for Listing Chat Rooms
 class ChatRoomSerializer(serializers.ModelSerializer):
-    # This uses the new __str__ method we wrote in models.py to show "(Event)"
-    name = serializers.CharField(source='__str__', read_only=True) 
+    # We use a method field to calculate the name dynamically
+    name = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+    last_message_time = serializers.SerializerMethodField()
     
     class Meta:
         model = ChatRoom
-        fields = ['id', 'name', 'event']
+        fields = ['id', 'name', 'type', 'participants', 'last_message', 'last_message_time']
+
+    def get_name(self, obj):
+        # 1. If the room actually has a name, use it
+        if obj.name and obj.name.strip():
+            return obj.name
+        
+        # 2. If not, try to fetch the related Event title
+        # (Assuming your ChatRoom model has a ForeignKey to 'event')
+        if hasattr(obj, 'event') and obj.event:
+            return obj.event.title
+            
+        return "Chat Room" # Fallback if everything is missing
+
+    def get_last_message(self, obj):
+        # Get the most recent message
+        last_msg = obj.messages.order_by('-timestamp').first()
+        if last_msg:
+            return last_msg.content
+        return "" 
+
+    def get_last_message_time(self, obj):
+        last_msg = obj.messages.order_by('-timestamp').first()
+        if last_msg:
+            return last_msg.timestamp
+        return obj.created_at
 
 # 4. New Serializer for Group Info Screen (Detailed)
 class ChatRoomDetailSerializer(serializers.ModelSerializer):

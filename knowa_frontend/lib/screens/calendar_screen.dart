@@ -347,6 +347,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       backgroundColor: Colors.white,
       floatingActionButton: _isAdmin 
         ? FloatingActionButton.extended(
+            heroTag: 'calendarFAB',
             onPressed: () async {
               final result = await Navigator.push(
                 context,

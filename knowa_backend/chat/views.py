@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
 from django.shortcuts import get_object_or_404  # Needed for PinMessageView
+from users.models import User
+from rest_framework import generics
 
 from .models import ChatRoom, Message
 from .serializers import (
@@ -177,3 +179,39 @@ class MessageInfoView(APIView):
             'read_by': read_data,
             'delivered_to': unread_data
         })
+
+class CreateChatRoomView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        participant_ids = request.data.get('participants', [])
+        name = request.data.get('name', 'New Chat')
+        # Default type is 'GENERAL' unless specified (e.g., CREW)
+        room_type = request.data.get('type', 'GENERAL') 
+
+        if not participant_ids:
+             return Response({'error': 'Select at least one participant.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create Room
+        chat = ChatRoom.objects.create(name=name, type=room_type)
+        
+        # Add Creator (Admin)
+        chat.participants.add(request.user)
+        
+        # Add Selected Users
+        for uid in participant_ids:
+            try:
+                user = User.objects.get(pk=uid)
+                chat.participants.add(user)
+            except User.DoesNotExist:
+                continue
+        
+        return Response({'id': chat.id, 'message': 'Chat created'}, status=status.HTTP_201_CREATED)
+
+class DeleteChatRoomView(generics.DestroyAPIView):
+    """
+    Allows Admin to delete a chat room permanently.
+    """
+    permission_classes = [permissions.IsAdminUser]
+    queryset = ChatRoom.objects.all()
+    serializer_class = ChatRoomSerializer

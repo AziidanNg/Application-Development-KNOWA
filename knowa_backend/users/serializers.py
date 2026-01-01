@@ -181,3 +181,29 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'title', 'message', 'is_read', 'created_at', 'notification_type']
+
+class UserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for displaying users in Chat/Group Info.
+    Includes calculated 'role' and 'avatar'.
+    """
+    role = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'email', 'role', 'avatar']
+
+    def get_role(self, obj):
+        # Calculate role based on staff status or member status
+        if obj.is_superuser or obj.is_staff:
+            return 'admin'
+        # Assuming you have VOLUNTEER status, otherwise defaults to 'member'
+        if obj.member_status == 'VOLUNTEER': 
+            return 'crew'
+        return 'member'
+
+    def get_avatar(self, obj):
+        # Return None for now, or the URL if you have a profile picture field
+        # This prevents the app from crashing if it looks for 'avatar'
+        return None
