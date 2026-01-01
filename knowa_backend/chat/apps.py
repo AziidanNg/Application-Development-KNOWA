@@ -1,4 +1,3 @@
-# chat/apps.py
 from django.apps import AppConfig
 
 class ChatConfig(AppConfig):
@@ -6,4 +5,5 @@ class ChatConfig(AppConfig):
     name = 'chat'
 
     def ready(self):
+        # This tells Django to load the signals file when the app starts
         import chat.signals
