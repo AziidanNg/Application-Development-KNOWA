@@ -26,6 +26,7 @@ from .views import (
     InterviewActionView,
     AdminInterviewHistoryView,
     UserOptionsView,
+    CurrentUserView,
 )
 
 urlpatterns = [
@@ -70,4 +71,5 @@ urlpatterns = [
     path('admin/interview-result/<int:pk>/', InterviewActionView.as_view(), name='interview-result'),
     path('admin/interviews/history/', AdminInterviewHistoryView.as_view(), name='admin-interview-history'),
     path('admin/user-options/', UserOptionsView.as_view(), name='user-options'),
+    path('me/', CurrentUserView.as_view(), name='current-user'),
 ]

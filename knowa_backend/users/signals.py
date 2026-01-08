@@ -23,3 +23,25 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
             # If the profile doesn't exist (like for aziidanadmin),
             # create one for them on the fly.
             UserProfile.objects.create(user=instance)
+
+def check_badge_milestones(sender, instance, created, **kwargs):
+    """
+    Checks counters and awards badges automatically.
+    """
+    # 1. Check Event Badges
+    event_badges = Badge.objects.filter(
+        criteria_type='EVENT', 
+        threshold__lte=instance.total_events_joined
+    )
+    for badge in event_badges:
+        if badge not in instance.earned_badges.all():
+            instance.earned_badges.add(badge)
+
+    # 2. Check Donation Badges
+    donation_badges = Badge.objects.filter(
+        criteria_type='DONATION', 
+        threshold__lte=instance.total_donations_made
+    )
+    for badge in donation_badges:
+        if badge not in instance.earned_badges.all():
+            instance.earned_badges.add(badge)

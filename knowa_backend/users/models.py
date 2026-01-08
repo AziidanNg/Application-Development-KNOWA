@@ -75,7 +75,22 @@ class User(AbstractUser):
             self.save(update_fields=['tac_code', 'tac_expiry'])
             return True
         return False
+
+class Badge(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
     
+    # Store the Canva image here
+    image = models.ImageField(upload_to='badges/', null=True, blank=True)
+    
+    # Logic for auto-awarding
+    TYPE_CHOICES = [('EVENT', 'Event Joined'), ('DONATION', 'Donation Made')]
+    criteria_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    threshold = models.IntegerField(help_text="Count needed to earn this badge")
+
+    def __str__(self):
+        return f"{self.name} ({self.threshold})"
+
     # This model holds all the extra application data
 class UserProfile(models.Model):
     # Link this profile to a specific user
@@ -98,7 +113,12 @@ class UserProfile(models.Model):
         blank=True, null=True # Allows it to be blank until they apply
     )
 
+    earned_badges = models.ManyToManyField(Badge, blank=True, related_name="holders")
     application_date = models.DateTimeField(null=True, blank=True)
+
+    # Counters to track progress
+    total_events_joined = models.IntegerField(default=0)
+    total_donations_made = models.IntegerField(default=0)
 
     # --- Background Fields (from image_1b2dc9.png) ---
     education = models.CharField(max_length=255, blank=True, null=True)

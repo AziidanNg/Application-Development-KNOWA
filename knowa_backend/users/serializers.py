@@ -1,26 +1,38 @@
 # users/serializers.py
 from rest_framework import serializers
-from .models import User
-from .models import UserProfile
-from .models import Interview
+from .models import User, UserProfile, Interview, Badge, Notification
 # Import the default token serializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.core.exceptions import ValidationError # For password validation
-import re # For password validation
-from .models import Notification
+from django.core.exceptions import ValidationError 
+import re 
 
 # --- SERIALIZER FOR USER PROFILE ---
+# 1. BadgeSerializer (Must be first so Profile can use it)
+class BadgeSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Badge
+        fields = ['id', 'name', 'description', 'image_url', 'criteria_type', 'threshold']
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        return None
+
+# 2. UserProfileSerializer (Uses BadgeSerializer)
 class UserProfileSerializer(serializers.ModelSerializer):
-    # --- NEW: Define fields to build full URLs ---
     resume_url = serializers.SerializerMethodField()
     identification_url = serializers.SerializerMethodField()
     payment_receipt_url = serializers.SerializerMethodField()
     status = serializers.CharField(source='user.member_status', read_only=True)
+    
+    # This includes the list of badges in the profile data
+    earned_badges = BadgeSerializer(many=True, read_only=True)
 
     class Meta:
         model = UserProfile
-        # These are the fields from the "Membership Application" form
-        # and the new payment receipt field
         fields = [
             'application_type',
             'ic_number', 
@@ -29,15 +41,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'reason_for_joining', 
             'resume', 
             'identification',
-            'payment_receipt', # <-- Add this field
+            'payment_receipt', 
             'status',
-
-            # --- NEW: These are for downloading (read-only) ---
             'resume_url',
             'identification_url',
             'payment_receipt_url',
+            'earned_badges', # <--- Badges are here
+            'total_events_joined', 
+            'total_donations_made',
         ]
-        # We add this so a user can't accidentally clear their application
         extra_kwargs = {
             'ic_number': {'required': False},
             'education': {'required': False},
@@ -49,14 +61,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'application_type': {'required': False},
         }
 
-    # --- NEW: Helper function to build a full URL ---
     def get_full_url(self, file_field):
         request = self.context.get('request')
         if file_field and hasattr(file_field, 'url'):
             return request.build_absolute_uri(file_field.url)
         return None
 
-    # --- NEW: Functions to use the helper ---
     def get_resume_url(self, obj):
         return self.get_full_url(obj.resume)
 
@@ -71,25 +81,20 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-
-        # Add custom data to the token's payload
         token['username'] = user.username
         token['member_status'] = user.member_status
         token['is_staff'] = user.is_staff
         token['first_name'] = user.first_name
         token['phone'] = user.phone
-        # Check if the user has a profile and a receipt file
+        
         has_receipt = False
         if hasattr(user, 'profile') and user.profile.payment_receipt:
             has_receipt = True
-
         token['has_receipt'] = has_receipt
         
-        # Check for Rejection Reason
         rejection_reason = ""
         if hasattr(user, 'profile') and user.profile.rejection_reason:
             rejection_reason = user.profile.rejection_reason
-        
         token['rejection_reason'] = rejection_reason
 
         return token
@@ -102,26 +107,18 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'username', 
-            'email', 
-            'first_name',
-            'phone', 
-            'interests',
-            'password', 
-            'password2'
+            'username', 'email', 'first_name', 'phone', 'interests',
+            'password', 'password2'
         ]
         extra_kwargs = {
             'password': {'write_only': True}
         }
 
     def validate(self, data):
-        # 1. Check if passwords match
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": "Passwords must match."})
-
+        
         password = data['password']
-
-        # 2. Check for strong password
         if len(password) < 8:
             raise serializers.ValidationError({"password": "Password must be at least 8 characters."})
         if not re.search(r'[A-Z]', password):
@@ -153,9 +150,7 @@ class InterviewSerializer(serializers.ModelSerializer):
         model = Interview
         fields = ['id', 'applicant', 'applicant_name', 'date_time', 'status', 'meeting_link', 'report']
 
-# --- REPLACE THE OLD AdminUserSerializer ---
 class AdminUserSerializer(serializers.ModelSerializer):
-    # This "nests" the UserProfile data inside the User data
     profile = UserProfileSerializer(read_only=True)
     interview = InterviewSerializer(read_only=True)
     application_type_display = serializers.CharField(source='profile.get_application_type_display', read_only=True)
@@ -164,17 +159,9 @@ class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 
-            'username', 
-            'email',
-            'first_name', # The "Name" field
-            'phone',
-            'interests',
-            'member_status', 
-            'application_date',
-            'profile',
-            'application_type_display',# <-- This contains all the new application data
-            'interview'
+            'id', 'username', 'email', 'first_name', 'phone', 'interests',
+            'member_status', 'application_date', 'profile',
+            'application_type_display', 'interview'
         ]
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -182,28 +169,121 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ['id', 'title', 'message', 'is_read', 'created_at', 'notification_type']
 
+# --- UPDATED USER SERIALIZER (THIS IS THE FIX) ---
 class UserSerializer(serializers.ModelSerializer):
-    """
-    Serializer for displaying users in Chat/Group Info.
-    Includes calculated 'role' and 'avatar'.
-    """
+    badges = serializers.SerializerMethodField()
+    total_events = serializers.SerializerMethodField() # <--- NEW LIVE COUNT FIELD
     role = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
+    
+    profile = UserProfileSerializer(read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'email', 'role', 'avatar']
+        # Added 'total_events' to the fields list
+        fields = ['id', 'username', 'first_name', 'email', 'role', 'avatar', 'profile', 'badges', 'total_events']
 
     def get_role(self, obj):
-        # Calculate role based on staff status or member status
         if obj.is_superuser or obj.is_staff:
             return 'admin'
-        # Assuming you have VOLUNTEER status, otherwise defaults to 'member'
         if obj.member_status == 'VOLUNTEER': 
             return 'crew'
         return 'member'
 
+    # --- 1. NEW: Calculate Total Events Live ---
+    def get_total_events(self, obj):
+        participant_count = 0
+        crew_count = 0
+        
+        # Check using the correct related_names from your Event model
+        if hasattr(obj, 'joined_events_as_participant'):
+            participant_count = obj.joined_events_as_participant.count()
+        if hasattr(obj, 'joined_events_as_crew'):
+            crew_count = obj.joined_events_as_crew.count()
+            
+        return participant_count + crew_count
+
+    # --- 2. LOGIC: Fetch Real Badges from DB ---
+    def get_badges(self, obj):
+        badges_data = []
+        
+        # Get the live counts
+        total_events = self.get_total_events(obj)
+        
+        # Get donation count safely
+        total_donations = 0
+        if hasattr(obj, 'profile') and hasattr(obj.profile, 'total_donations_made'):
+            total_donations = obj.profile.total_donations_made
+
+        # RULES: Match these exactly to your Admin Panel Names
+        event_badges_rules = [
+            (1, "NEWCOMER"),      # Was "NEWCOMER (1)"
+            (5, "MEMBER"),        # Was "MEMBER (5)"
+            (10, "ENTHUSIAST"),   # Was "ENTHUSIAST (10)"
+            (20, "VETERAN"),
+            (50, "LEGEND"),
+        ]
+
+        donation_badges_rules = [
+            (1, "SUPPORTER"),
+            (5, "CONTRIBUTOR"),
+            (10, "PARTNER"),
+            (20, "PATRON"),
+            (50, "PHILANTHROPIST"),
+        ]
+
+        # Helper to find and add badge
+        def try_add_badge(name):
+            # 1. Update this import if needed!
+            # from badges.models import Badge 
+            from users.models import Badge 
+
+            try:
+                real_badge = Badge.objects.get(name=name)
+                
+                # ... existing image logic ...
+                image_url = None
+                if real_badge.image:
+                    request = self.context.get('request')
+                    if request:
+                        image_url = request.build_absolute_uri(real_badge.image.url)
+                    else:
+                        image_url = real_badge.image.url
+                
+                badges_data.append({
+                    "name": real_badge.name,
+                    "description": real_badge.description,
+                    "image_url": image_url,
+                    "icon": "star"
+                })
+            except Badge.DoesNotExist:
+                # --- DEBUG PRINT ---
+                print(f"❌ ERROR: Could not find badge with exact name: '{name}'")
+                print("Available badges in DB are:")
+                for b in Badge.objects.all():
+                    print(f" - '{b.name}'") # Copy this exact name!
+                # -------------------
+            except Exception as e:
+                print(f"❌ CRITICAL ERROR: {e}")
+
+        # Check Rules
+        for threshold, badge_name in event_badges_rules:
+            if total_events >= threshold:
+                try_add_badge(badge_name)
+
+        for threshold, badge_name in donation_badges_rules:
+            if total_donations >= threshold:
+                try_add_badge(badge_name)
+
+        return badges_data
+
     def get_avatar(self, obj):
-        # Return None for now, or the URL if you have a profile picture field
-        # This prevents the app from crashing if it looks for 'avatar'
+        try:
+            if hasattr(obj, 'profile') and obj.profile.avatar:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.profile.avatar.url)
+                return obj.profile.avatar.url
+        except Exception:
+            pass
         return None

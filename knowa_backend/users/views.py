@@ -12,6 +12,7 @@ from django.db.models import Sum, Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics, permissions
+from rest_framework.permissions import IsAuthenticated
 
 # --- 3. LOCAL APP IMPORTS (Models & Serializers) ---
 from .models import User, UserProfile, Interview, Notification
@@ -22,7 +23,8 @@ from .serializers import (
     UserProfileSerializer, 
     InterviewSerializer,
     MyTokenObtainPairSerializer,
-    NotificationSerializer
+    NotificationSerializer,
+    UserSerializer
 )
 
 # --- 4. EXTERNAL APP IMPORTS (Events & Donations) ---
@@ -660,3 +662,13 @@ class UserOptionsView(APIView):
             data.append({'id': u.id, 'name': name, 'role': role, 'username': u.username})
             
         return Response(data, status=status.HTTP_200_OK)
+
+class CurrentUserView(APIView):
+    """
+    Returns the full profile (with badges) for the currently logged-in user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user, context={'request': request})
+        return Response(serializer.data)

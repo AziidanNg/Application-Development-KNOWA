@@ -541,4 +541,31 @@ Future<AdminStats> getAdminStats() async {
       print(e);
     }
   }
+
+  Future<Map<String, dynamic>?> getFreshProfile() async {
+    final token = await _storage.read(key: 'access_token');
+    if (token == null) return null;
+
+    // --- FIX: Remove the slash before 'me/' ---
+    // _baseUrl already ends with '/', so we just append 'me/'
+    final url = Uri.parse('${_baseUrl}me/'); 
+    // --------------------------------------------------
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      print("Error fetching fresh profile: $e");
+    }
+    return null;
+  }
 }

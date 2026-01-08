@@ -13,6 +13,7 @@ import 'package:knowa_frontend/screens/donation_page.dart';
 import 'package:knowa_frontend/screens/fix_donation_screen.dart';
 import 'package:knowa_frontend/screens/notification_screen.dart';
 import 'package:knowa_frontend/main.dart';
+import 'package:knowa_frontend/widgets/badge_preview_card.dart'; // Ensure this exists
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,7 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // This will hold our user data
   Map<String, dynamic>? _userData;
-  Map<String, dynamic>? _donationIssue; // Holds the rejection reason if any
+  Map<String, dynamic>? _donationIssue; 
 
   // This will hold the events
   Future<List<Event>>? _eventsFuture;
@@ -43,13 +44,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _checkDonationIssues();
   }
 
-  // This function gets the user data first, then loads the events
+  // --- UPDATED LOAD DATA FUNCTION ---
   void _loadData() async {
-    final userData = await _authService.getUserData();
-    setState(() {
-      _userData = userData;
-      _eventsFuture = _eventService.getEvents();
-    });
+    // 1. Load basic data first (from local storage) so UI shows up fast
+    var userData = await _authService.getUserData();
+    
+    if (mounted) {
+      setState(() {
+        _userData = userData;
+        _eventsFuture = _eventService.getEvents();
+      });
+    }
+
+    // 2. Fetch FRESH data (Badges!) from the server in the background
+    try {
+      final freshProfile = await _authService.getFreshProfile();
+      
+      if (freshProfile != null && mounted) {
+        setState(() {
+          // OVERWRITE the old data with the new server data (containing badges)
+          _userData = freshProfile; 
+        });
+      }
+    } catch (e) {
+      print("Background profile refresh failed: $e");
+    }
   }
 
   void _handleLogout(BuildContext context) async {
@@ -64,15 +83,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // --- UPDATED: Simulating a check for donation issues ---
+  // Simulating a check for donation issues
   void _checkDonationIssues() async {
     // Call the real API
     final issue = await _donationService.getLatestIssue();
     
     if (mounted) {
       setState(() {
-        // If issue is null, this clears the alert. 
-        // If issue exists, this shows the alert.
         _donationIssue = issue; 
       });
     }
@@ -85,7 +102,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text('Home', style: TextStyle(color: Colors.black)),
-        automaticallyImplyLeading: false, // Prevents back button to login
+        automaticallyImplyLeading: false, 
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none_outlined, color: Colors.black),
@@ -112,6 +129,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               'Hi, ${_userData?['first_name'] ?? 'User'} 👋',
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
+            
+            // --- MOVED BADGES FROM HERE TO BOTTOM ---
+
             const SizedBox(height: 24),
 
             // "Upcoming Events" Section
@@ -144,8 +164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const SizedBox(height: 24),
 
-            // --- NEW: DONATION ISSUE ALERT ---
-            // This only shows up if there is an issue found
+            // --- DONATION ISSUE ALERT ---
             if (_donationIssue != null) 
               Padding(
                 padding: const EdgeInsets.only(bottom: 24.0),
@@ -195,8 +214,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             setState(() {
                               _donationIssue = null; // Remove the alert immediately
                             });
-                            // Optionally reload other data
-                            // _loadData(); 
                           }
                         },
                       )
@@ -204,7 +221,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
-            // ---------------------------------
 
             // --- Announcements Section ---
             const Text(
@@ -227,18 +243,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
+            
+            // FIXED: Use '?' and '?? 0' to prevent crash
             _buildActivityCard(
               title: 'Events Joined',
-              value: '12', 
+              value: (_userData?['total_events'] ?? 0).toString(), 
             ),
+
+            // --- NEW LOCATION: Badge Preview Card (Bottom) ---
+            if (_userData != null) ...[
+              const SizedBox(height: 32),
+              const Text(
+                'My Achievements',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              BadgePreviewCard(
+                earnedBadges: _userData!['badges'] ?? [], 
+                // Using new live fields safely
+                totalEvents: _userData!['total_events'] ?? 0, 
+                totalDonations: _userData!['profile']?['total_donations_made'] ?? 0,
+              ),
+              const SizedBox(height: 40), // Extra padding at bottom
+            ],
+            // -------------------------------------------------
           ],
         ),
       ),
     );
   }
 
-  // ... (Keep all your existing helper widgets: _buildEventList, _buildEventCard, _buildDonationCard, _buildAnnouncementCard, _buildActivityCard, _buildApplicationStatusWidget, _buildPaymentCard, _buildStatusCard) ...
-  // Paste them here unchanged.
+  // --- HELPER WIDGETS ---
 
   Widget _buildEventList() {
     // If the user data or events haven't loaded, show a spinner
@@ -485,8 +520,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return _buildStatusCard(
           title: 'Application Status: Rejected',
-          text: reason, // <-- SHOW THE REAL REASON HERE
-          icon: Icons.highlight_off, // Changed icon to look more like an alert
+          text: reason, 
+          icon: Icons.highlight_off, 
           color: Colors.red,
         );
 
