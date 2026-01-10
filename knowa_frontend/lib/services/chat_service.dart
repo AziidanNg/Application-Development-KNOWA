@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatService {
   // NOTE: Change to your IP (10.0.2.2 for Emulator) or deployed URL
-  final String _baseUrl = 'http://knowa.up.railway.app/api/chat'; 
+  final String _baseUrl = 'https://knowa.up.railway.app/api/chat'; 
   final _storage = const FlutterSecureStorage();
 
   Future<List<dynamic>> getChatRooms() async {
@@ -95,7 +95,7 @@ class ChatService {
 
   // 1. Get List of Users to Chat With
   Future<List<dynamic>> getUserOptions() async {
-    final url = Uri.parse('http://knowa.up.railway.app/api/users/admin/user-options/'); 
+    final url = Uri.parse('https://knowa.up.railway.app/api/users/admin/user-options/'); 
     
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('access');
