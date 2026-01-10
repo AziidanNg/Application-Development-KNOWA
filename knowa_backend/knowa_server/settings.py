@@ -206,18 +206,20 @@ SIMPLE_JWT = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# --- EMAIL CONFIGURATION ---
+# knowa_server/settings.py
+
+# --- EMAIL CONFIGURATION (SSL VERSION) ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+EMAIL_PORT = 465  # <--- CHANGED TO 465
+EMAIL_USE_TLS = False  # <--- TURN OFF TLS
+EMAIL_USE_SSL = True   # <--- TURN ON SSL (More reliable)
 
-# LOGIC: Try to get secrets from Railway Variables first. 
-# If not found (None), try to read from the local config file.
+# Get secrets from Railway Variables
 EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASS')
 
-# Fallback for Local Development (if variables aren't set)
+# Fallback for Local Development
 if not EMAIL_HOST_USER:
     try:
         config = configparser.ConfigParser()
@@ -226,6 +228,8 @@ if not EMAIL_HOST_USER:
         EMAIL_HOST_PASSWORD = config.get('email', 'EMAIL_PASS', fallback=None)
     except:
         pass
+
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
