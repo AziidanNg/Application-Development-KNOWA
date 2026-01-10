@@ -45,8 +45,25 @@ class RegistrationView(APIView):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+
+            # --- 1. SET STATUS TO PUBLIC ---
+            # This allows them to login, but they are not a "Member" yet.
+            # They will not appear in the Admin "Pending" list until they 'Apply'.
+            user.member_status = User.MemberStatus.PUBLIC 
+            user.save()
+            # -------------------------------
+            
+            # --- 2. SEND WELCOME EMAIL ---
+            try:
+                subject = 'Welcome to KNOWA!'
+                message = f'Hi {user.username},\n\nThank you for registering. You can now log in to the app.\nTo become a verified Member, please go to your Profile and submit a Membership Application.'
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+            except Exception as e:
+                print(f"Error sending welcome email: {e}")
+            # -----------------------------
+
             return Response({
-                'message': 'Registration successful. Account is pending approval.',
+                'message': 'Registration successful. Please login.',
                 'username': user.username,
                 'status': user.member_status,
             }, status=status.HTTP_201_CREATED)

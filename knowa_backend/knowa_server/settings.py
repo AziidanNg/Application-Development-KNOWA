@@ -206,16 +206,28 @@ SIMPLE_JWT = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# --- EMAIL CONFIGURATION FOR 2FA & PASSWORD RESET ---
+# --- EMAIL CONFIGURATION ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-# These two lines use the secrets from your my.cnf file
+# LOGIC: Try to get secrets from Railway Variables first. 
+# If not found (None), try to read from the local config file.
+EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASS')
+
+# Fallback for Local Development (if variables aren't set)
+if not EMAIL_HOST_USER:
+    try:
+        config = configparser.ConfigParser()
+        config.read(os.path.join(BASE_DIR, 'my.cnf'))
+        EMAIL_HOST_USER = config.get('email', 'EMAIL_USER', fallback=None)
+        EMAIL_HOST_PASSWORD = config.get('email', 'EMAIL_PASS', fallback=None)
+    except:
+        pass
+
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-EMAIL_HOST_USER = EMAIL_HOST_USER
-EMAIL_HOST_PASSWORD = EMAIL_HOST_PASSWORD
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
