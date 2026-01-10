@@ -1,1 +1,1 @@
-web: gunicorn knowa_server.wsgi --log-file -
+web: python create_superuser.py && python manage.py migrate && gunicorn knowa_server.wsgi --log-file -
