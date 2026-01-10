@@ -1,0 +1,1 @@
+web: gunicorn knowa_server.wsgi --log-file -

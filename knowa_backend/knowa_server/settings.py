@@ -33,13 +33,11 @@ EMAIL_HOST_PASSWORD = config.get('email', 'EMAIL_PASS', fallback=None)
 SECRET_KEY = 'django-insecure-k7x))07ic+i^fov)pa4y-7&lfh(8z_v_scm%1)+gs9^7d!wy4k'
 
 # SECURITY WARNING: don't run with debug turned on in production!
+# IMPORTANT: In a real production app, set this to False via environment variable
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'localhost',
-    '10.0.2.2',
-]
+# --- UPDATED: Allow all hosts so Railway URL works ---
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -50,7 +48,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt', # For token login
     'corsheaders',
 
-    # My Apps (This is the most important fix)
+    # My Apps
     'users.apps.UsersConfig',
     'events',
     'chat.apps.ChatConfig',
@@ -68,6 +66,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # <--- ADDED: For static files on Railway
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -99,19 +98,38 @@ WSGI_APPLICATION = 'knowa_server.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'knowa_db',                      # The database name you created
-        'USER': 'root',                         # Your phpMyAdmin username
-        'PASSWORD': '',                         # Your phpMyAdmin password (leave blank if you don't have one)
-        'HOST': '127.0.0.1',                    # This means 'localhost'
-        'PORT': '3306',                         # The default port for MySQL
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+# --- UPDATED: Smart Database Switch ---
+# If running on Railway, use their Database. If Local, use yours.
+if 'RAILWAY_ENVIRONMENT' in os.environ:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('MYSQLDATABASE'),
+            'USER': os.environ.get('MYSQLUSER'),
+            'PASSWORD': os.environ.get('MYSQLPASSWORD'),
+            'HOST': os.environ.get('MYSQLHOST'),
+            'PORT': os.environ.get('MYSQLPORT'),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
     }
-}
+else:
+    # Running Locally (Your Laptop)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'knowa_db',                 # The database name you created
+            'USER': 'root',                    # Your phpMyAdmin username
+            'PASSWORD': '',                    # Your phpMyAdmin password
+            'HOST': '127.0.0.1',               # Localhost
+            'PORT': '3306',                    # Default MySQL port
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
+    }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -148,6 +166,10 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# --- UPDATED: Static Files Configuration for Production ---
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -196,3 +218,7 @@ EMAIL_HOST_USER = EMAIL_HOST_USER
 EMAIL_HOST_PASSWORD = EMAIL_HOST_PASSWORD
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+# --- UPDATED: Trust Railway Domain ---
+# This prevents "Forbidden (403)" errors on the Admin Login page in production
+CSRF_TRUSTED_ORIGINS = ['https://*.up.railway.app']
