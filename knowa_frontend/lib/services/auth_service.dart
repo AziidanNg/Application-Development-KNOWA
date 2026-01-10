@@ -568,4 +568,47 @@ Future<AdminStats> getAdminStats() async {
     }
     return null;
   }
+
+  // --- FEEDBACK ---
+  Future<bool> submitFeedback(String category, String message) async {
+    final token = await _storage.read(key: 'access_token');
+    try {
+      final response = await http.post(
+        Uri.parse('${_baseUrl}feedback/'), // Ensure this matches your urls.py
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'category': category,
+          'message': message,
+        }),
+      );
+      return response.statusCode == 201; // 201 Created
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // --- ADMIN: GET ALL FEEDBACK ---
+  Future<List<Map<String, dynamic>>> getAllFeedback() async {
+    final token = await _storage.read(key: 'access_token');
+    try {
+      final response = await http.get(
+        Uri.parse('${_baseUrl}admin/feedback-list/'), // Check your urls.py path!
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      }
+      return [];
+    } catch (e) {
+      print("Error fetching feedback: $e");
+      return [];
+    }
+  }
 }

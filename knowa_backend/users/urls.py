@@ -27,6 +27,8 @@ from .views import (
     AdminInterviewHistoryView,
     UserOptionsView,
     CurrentUserView,
+    SubmitFeedbackView,
+    FeedbackListView,
 )
 
 urlpatterns = [
@@ -72,4 +74,6 @@ urlpatterns = [
     path('admin/interviews/history/', AdminInterviewHistoryView.as_view(), name='admin-interview-history'),
     path('admin/user-options/', UserOptionsView.as_view(), name='user-options'),
     path('me/', CurrentUserView.as_view(), name='current-user'),
+    path('feedback/', SubmitFeedbackView.as_view(), name='submit-feedback'),
+    path('admin/feedback-list/', FeedbackListView.as_view(), name='admin-feedback-list'),
 ]

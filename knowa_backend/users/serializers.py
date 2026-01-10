@@ -1,6 +1,6 @@
 # users/serializers.py
 from rest_framework import serializers
-from .models import User, UserProfile, Interview, Badge, Notification
+from .models import User, UserProfile, Interview, Badge, Notification, UserFeedback
 # Import the default token serializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.core.exceptions import ValidationError 
@@ -46,7 +46,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'resume_url',
             'identification_url',
             'payment_receipt_url',
-            'earned_badges', # <--- Badges are here
+            'earned_badges', 
             'total_events_joined', 
             'total_donations_made',
         ]
@@ -169,19 +169,38 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ['id', 'title', 'message', 'is_read', 'created_at', 'notification_type']
 
-# --- UPDATED USER SERIALIZER (THIS IS THE FIX) ---
+# --- UPDATED USER SERIALIZER (THE FIX IS HERE) ---
 class UserSerializer(serializers.ModelSerializer):
     badges = serializers.SerializerMethodField()
-    total_events = serializers.SerializerMethodField() # <--- NEW LIVE COUNT FIELD
+    total_events = serializers.SerializerMethodField() 
     role = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
     
+    # --- FIX: YOU WERE MISSING THESE LINES ---
+    # These tell Django that 'has_receipt' is a function, not a database column
+    has_receipt = serializers.SerializerMethodField()
+    rejection_reason = serializers.SerializerMethodField()
+    # -----------------------------------------
+
     profile = UserProfileSerializer(read_only=True)
 
     class Meta:
         model = User
-        # Added 'total_events' to the fields list
-        fields = ['id', 'username', 'first_name', 'email', 'role', 'avatar', 'profile', 'badges', 'total_events']
+        fields = [
+            'id', 
+            'username', 
+            'first_name', 
+            'email', 
+            'role', 
+            'avatar', 
+            'profile', 
+            'badges', 
+            'total_events',
+            'member_status',      
+            'phone',              
+            'has_receipt',        # Now this works because we defined it above
+            'rejection_reason'    # Now this works because we defined it above
+        ]
 
     def get_role(self, obj):
         if obj.is_superuser or obj.is_staff:
@@ -190,12 +209,10 @@ class UserSerializer(serializers.ModelSerializer):
             return 'crew'
         return 'member'
 
-    # --- 1. NEW: Calculate Total Events Live ---
     def get_total_events(self, obj):
         participant_count = 0
         crew_count = 0
         
-        # Check using the correct related_names from your Event model
         if hasattr(obj, 'joined_events_as_participant'):
             participant_count = obj.joined_events_as_participant.count()
         if hasattr(obj, 'joined_events_as_crew'):
@@ -203,23 +220,31 @@ class UserSerializer(serializers.ModelSerializer):
             
         return participant_count + crew_count
 
-    # --- 2. LOGIC: Fetch Real Badges from DB ---
+    # --- FIX: LOGIC FOR RECEIPT ---
+    def get_has_receipt(self, obj):
+        # Check if profile exists and if payment_receipt has a file
+        if hasattr(obj, 'profile') and obj.profile.payment_receipt:
+            return True
+        return False
+
+    # --- FIX: LOGIC FOR REJECTION REASON ---
+    def get_rejection_reason(self, obj):
+        if hasattr(obj, 'profile') and obj.profile.rejection_reason:
+            return obj.profile.rejection_reason
+        return ""
+
     def get_badges(self, obj):
         badges_data = []
-        
-        # Get the live counts
         total_events = self.get_total_events(obj)
         
-        # Get donation count safely
         total_donations = 0
         if hasattr(obj, 'profile') and hasattr(obj.profile, 'total_donations_made'):
             total_donations = obj.profile.total_donations_made
 
-        # RULES: Match these exactly to your Admin Panel Names
         event_badges_rules = [
-            (1, "NEWCOMER"),      # Was "NEWCOMER (1)"
-            (5, "MEMBER"),        # Was "MEMBER (5)"
-            (10, "ENTHUSIAST"),   # Was "ENTHUSIAST (10)"
+            (1, "NEWCOMER"),      
+            (5, "MEMBER"),        
+            (10, "ENTHUSIAST"),   
             (20, "VETERAN"),
             (50, "LEGEND"),
         ]
@@ -232,16 +257,10 @@ class UserSerializer(serializers.ModelSerializer):
             (50, "PHILANTHROPIST"),
         ]
 
-        # Helper to find and add badge
         def try_add_badge(name):
-            # 1. Update this import if needed!
-            # from badges.models import Badge 
             from users.models import Badge 
-
             try:
                 real_badge = Badge.objects.get(name=name)
-                
-                # ... existing image logic ...
                 image_url = None
                 if real_badge.image:
                     request = self.context.get('request')
@@ -257,16 +276,11 @@ class UserSerializer(serializers.ModelSerializer):
                     "icon": "star"
                 })
             except Badge.DoesNotExist:
-                # --- DEBUG PRINT ---
-                print(f"❌ ERROR: Could not find badge with exact name: '{name}'")
-                print("Available badges in DB are:")
-                for b in Badge.objects.all():
-                    print(f" - '{b.name}'") # Copy this exact name!
-                # -------------------
+                pass
             except Exception as e:
-                print(f"❌ CRITICAL ERROR: {e}")
+                # print(f"Error adding badge: {e}")
+                pass
 
-        # Check Rules
         for threshold, badge_name in event_badges_rules:
             if total_events >= threshold:
                 try_add_badge(badge_name)
@@ -287,3 +301,8 @@ class UserSerializer(serializers.ModelSerializer):
         except Exception:
             pass
         return None
+
+class UserFeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserFeedback
+        fields = ['category', 'message']

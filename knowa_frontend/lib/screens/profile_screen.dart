@@ -1,9 +1,9 @@
-// lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/membership_application_screen.dart';
-import 'package:knowa_frontend/main.dart'; // <--- 1. ADD THIS IMPORT
+import 'package:knowa_frontend/main.dart'; 
+import 'package:knowa_frontend/screens/admin_feedback_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,7 +14,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
-  // Ensure the type allows null (added ?) to match the service update
   Future<Map<String, dynamic>?>? _userFuture; 
 
   @override
@@ -29,20 +28,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  // --- 2. UPDATED LOGOUT FUNCTION ---
   void _handleLogout(BuildContext context) async {
     await _authService.logout();
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          // Wrap LoginScreen so the Chatbot appears there
           builder: (context) => const AppRootWrapper(child: LoginScreen()),
         ),
         (Route<dynamic> route) => false,
       );
     }
   }
-  // ----------------------------------
+
+  // --- NEW: Feedback Dialog Logic ---
+  void _showFeedbackDialog() {
+    final TextEditingController _messageController = TextEditingController();
+    String _selectedCategory = 'IMPROVEMENT';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder( // Needed to update the Dropdown inside Dialog
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Send Feedback'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Help us improve the app!'),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: _selectedCategory,
+                    decoration: const InputDecoration(
+                      labelText: 'Category',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'BUG', child: Text('Bug Report')),
+                      DropdownMenuItem(value: 'FEATURE', child: Text('Feature Request')),
+                      DropdownMenuItem(value: 'IMPROVEMENT', child: Text('Improvement')),
+                      DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                    ],
+                    onChanged: (value) {
+                      setDialogState(() => _selectedCategory = value!);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _messageController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Your Message',
+                      border: OutlineInputBorder(),
+                      hintText: 'Tell us what you think...',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_messageController.text.trim().isEmpty) return;
+
+                    // Close dialog first
+                    Navigator.pop(context);
+
+                    // Show loading snackbar
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Sending feedback...')),
+                    );
+
+                    // Call API
+                    bool success = await _authService.submitFeedback(
+                      _selectedCategory,
+                      _messageController.text,
+                    );
+
+                    // Show result
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(success ? 'Thank you! Feedback sent.' : 'Failed to send feedback.'),
+                          backgroundColor: success ? Colors.green : Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                  ),
+                  child: const Text('Submit', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   String _getFriendlyStatus(String dbStatus) {
     switch (dbStatus) {
@@ -74,7 +161,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      // Update the generic type to allow nulls: Map<String, dynamic>?
       body: FutureBuilder<Map<String, dynamic>?>( 
         future: _userFuture,
         builder: (context, snapshot) {
@@ -99,6 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 24),
+                // --- Avatar Section ---
                 const CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.grey,
@@ -115,6 +202,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 32),
 
+                // --- Account Section ---
                 _buildSectionHeader('Account'),
                 _buildInfoRow(
                   icon: Icons.phone_outlined,
@@ -130,6 +218,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (canApply) _buildApplyCard(),
 
                 const SizedBox(height: 32),
+                
+                // --- Support Section (NEW) ---
+                // --- Support Section ---
+                _buildSectionHeader('Support'),
+                
+                // 1. Regular User Button (Everyone sees this)
+                _buildInfoRow(
+                  icon: Icons.feedback_outlined,
+                  label: 'Send Feedback',
+                  value: '',
+                  onTap: _showFeedbackDialog,
+                ),
+
+                // 2. ADMIN ONLY Button (Only shows if is_staff is true)
+                if (userData['is_staff'] == true) ...[
+                  const SizedBox(height: 8), // Small gap
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    decoration: BoxDecoration(
+                      // Changed from purple to a professional admin blue-grey
+                      color: Colors.blueGrey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      // Added a subtle border to make it pop
+                      border: Border.all(color: Colors.blueGrey.shade100),
+                    ),
+                    child: _buildInfoRow(
+                      icon: Icons.admin_panel_settings_outlined,
+                      // Changed icon color to match the theme
+                      iconColor: Colors.blueGrey.shade700,
+                      label: 'View User Feedback',
+                      value: 'Admin',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AdminFeedbackScreen()),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 32),
+
+                // --- Settings Section ---
                 _buildSectionHeader('Settings'),
                 _buildInfoRow(
                   icon: Icons.notifications_outlined,
@@ -157,6 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
+                const SizedBox(height: 40),
               ],
             ),
           );
@@ -168,9 +301,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      child: Align( // Added Align to ensure left alignment
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -180,19 +316,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required String value,
     VoidCallback? onTap,
+    // Add this new optional parameter
+    Color? iconColor,
   }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.grey[700]),
+      // Use the custom color if provided, otherwise default to grey
+      leading: Icon(icon, color: iconColor ?? Colors.grey[700]),
       title: Text(label),
+      // ... rest of the function is the same ...
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: TextStyle(color: Colors.grey[600], fontSize: 16)),
-          if (onTap != null) const Icon(Icons.arrow_forward_ios, size: 16),
+          if (value.isNotEmpty) 
+            Text(value, style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+          if (onTap != null) ...[
+             if (value.isNotEmpty) const SizedBox(width: 8),
+             const Icon(Icons.arrow_forward_ios, size: 16),
+          ]
         ],
       ),
       onTap: onTap,
-      contentPadding: EdgeInsets.zero,
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4), // Added padding for better look in container
     );
   }
 

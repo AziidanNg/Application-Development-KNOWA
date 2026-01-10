@@ -15,7 +15,7 @@ from rest_framework import status, generics, permissions
 from rest_framework.permissions import IsAuthenticated
 
 # --- 3. LOCAL APP IMPORTS (Models & Serializers) ---
-from .models import User, UserProfile, Interview, Notification
+from .models import User, UserProfile, Interview, Notification, UserFeedback
 from .utils import send_notification, notify_all_admins
 from .serializers import (
     UserRegistrationSerializer, 
@@ -24,7 +24,8 @@ from .serializers import (
     InterviewSerializer,
     MyTokenObtainPairSerializer,
     NotificationSerializer,
-    UserSerializer
+    UserSerializer,
+    UserFeedbackSerializer
 )
 
 # --- 4. EXTERNAL APP IMPORTS (Events & Donations) ---
@@ -672,3 +673,18 @@ class CurrentUserView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
+
+#==FEEDBACK==#
+class SubmitFeedbackView(generics.CreateAPIView):
+    queryset = UserFeedback.objects.all()
+    serializer_class = UserFeedbackSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # Automatically attach the user who sent it
+        serializer.save(user=self.request.user)
+
+class FeedbackListView(generics.ListAPIView):
+    queryset = UserFeedback.objects.all().order_by('-created_at')
+    serializer_class = UserFeedbackSerializer
+    permission_classes = [permissions.IsAdminUser] # Only Admins allowed

@@ -172,3 +172,18 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.recipient.username}: {self.title}"
+
+class UserFeedback(models.Model):
+    CATEGORY_CHOICES = [
+        ('BUG', 'Bug Report'),
+        ('FEATURE', 'Feature Request'),
+        ('IMPROVEMENT', 'Improvement'),
+        ('OTHER', 'Other'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='IMPROVEMENT')
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.category}"
