@@ -206,30 +206,28 @@ SIMPLE_JWT = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# knowa_server/settings.py
-
-# --- EMAIL CONFIGURATION (SSL VERSION) ---
+# --- EMAIL CONFIGURATION (Standard TLS) ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 465  # <--- CHANGED TO 465
-EMAIL_USE_TLS = False  # <--- TURN OFF TLS
-EMAIL_USE_SSL = True   # <--- TURN ON SSL (More reliable)
+EMAIL_PORT = 587              # Standard TLS port
+EMAIL_USE_TLS = True          # Must be True
+EMAIL_USE_SSL = False         # Must be False
+EMAIL_TIMEOUT = 10            # Stop waiting after 10 seconds (prevents hanging)
 
-# Get secrets from Railway Variables
+# Secrets from Railway Variables
 EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASS')
 
-# Fallback for Local Development
+# Local Fallback
 if not EMAIL_HOST_USER:
     try:
+        import configparser
         config = configparser.ConfigParser()
         config.read(os.path.join(BASE_DIR, 'my.cnf'))
         EMAIL_HOST_USER = config.get('email', 'EMAIL_USER', fallback=None)
         EMAIL_HOST_PASSWORD = config.get('email', 'EMAIL_PASS', fallback=None)
     except:
         pass
-
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
