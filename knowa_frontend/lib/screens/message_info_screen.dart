@@ -41,7 +41,10 @@ class _MessageInfoScreenState extends State<MessageInfoScreen> {
         final u = users[index];
         return ListTile(
           leading: CircleAvatar(
-             backgroundImage: u['avatar'] != null ? NetworkImage("http://10.0.2.2:8000${u['avatar']}") : null,
+             // --- FIX: Use Production URL here ---
+             backgroundImage: u['avatar'] != null 
+                 ? NetworkImage("https://knowa.up.railway.app${u['avatar']}") 
+                 : null,
              child: u['avatar'] == null ? Text(u['username'][0]) : null,
           ),
           title: Text(u['username']),
@@ -74,9 +77,9 @@ class _MessageInfoScreenState extends State<MessageInfoScreen> {
                          Text(_info!['message'], style: const TextStyle(fontSize: 16)),
                          const SizedBox(height: 5),
                          Text(
-                          "Sent: ${_info!['timestamp'].toString().substring(0, 16).replaceAll('T', ' ')}", 
-                          style: const TextStyle(color: Colors.grey, fontSize: 12)
-                        ),
+                           "Sent: ${_info!['timestamp'].toString().substring(0, 16).replaceAll('T', ' ')}", 
+                           style: const TextStyle(color: Colors.grey, fontSize: 12)
+                         ),
                       ],
                     ),
                   ),

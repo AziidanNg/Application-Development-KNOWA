@@ -13,7 +13,7 @@ import 'package:knowa_frontend/models/notification_item.dart';
 
 class AuthService {
   // Use 10.0.2.2 for the Android emulator to connect to your PC's localhost
-  final String _baseUrl = 'http://10.0.2.2:8000/api/users/';
+  final String _baseUrl = 'http://knowa.up.railway.app/api/users/';
   final _storage = const FlutterSecureStorage();
 
   // --- REGISTRATION ---

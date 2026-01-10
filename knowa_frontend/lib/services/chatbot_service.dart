@@ -7,14 +7,11 @@ import '../models/faq_model.dart';
 class ChatbotService {
   final _storage = const FlutterSecureStorage();
 
-  String get _baseUrl {
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000/api';
-    }
-    return 'http://127.0.0.1:8000/api';
-  }
+  // --- UPDATED: PRODUCTION URL ---
+  // No need for '10.0.2.2' anymore because this link works from anywhere.
+  final String _baseUrl = 'https://knowa.up.railway.app/api';
 
-  // 1. Send Message (Points to your EXISTING Users App logic)
+  // 1. Send Message
   Future<String> sendMessage(String message) async {
     final url = Uri.parse('$_baseUrl/users/chatbot/'); 
     // Add auth headers if your chat requires it, otherwise keep generic
@@ -32,7 +29,7 @@ class ChatbotService {
     }
   }
 
-  // 2. Get FAQs (Points to the NEW Chatbot App logic)
+  // 2. Get FAQs
   Future<List<FAQ>> getFAQs() async {
     final url = Uri.parse('$_baseUrl/chatbot/faqs/'); 
     final token = await _storage.read(key: 'access_token'); 

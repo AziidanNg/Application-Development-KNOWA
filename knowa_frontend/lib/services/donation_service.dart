@@ -9,9 +9,9 @@ import 'package:flutter/foundation.dart';
 import 'package:knowa_frontend/models/donation.dart';
 
 class DonationService {
-  final String _baseUrl = defaultTargetPlatform == TargetPlatform.android
-      ? 'http://10.0.2.2:8000/api/donations/'
-      : 'http://127.0.0.1:8000/api/donations/';
+  // --- UPDATED: PRODUCTION URL ---
+  // Using the Railway link so the app works on real phones/Aptoide.
+  final String _baseUrl = 'https://knowa.up.railway.app/api/donations/';
 
   final _storage = const FlutterSecureStorage();
 
@@ -99,9 +99,6 @@ class DonationService {
   Future<bool> approveDonation(int id) async {
     final token = await _storage.read(key: 'access_token');
     try {
-      // --- CHANGE THIS URL ---
-      // OLD: Uri.parse('$_baseUrl$id/approve/')
-      // NEW: Matches 'admin/approve/<int:pk>/' from your urls.py
       final response = await http.post(
         Uri.parse('${_baseUrl}admin/approve/$id/'), 
         headers: {
@@ -119,9 +116,6 @@ class DonationService {
   Future<bool> rejectDonation(int id, {String? reason}) async {
     final token = await _storage.read(key: 'access_token');
     try {
-      // --- CHANGE THIS URL ---
-      // OLD: Uri.parse('$_baseUrl$id/reject/')
-      // NEW: Matches 'admin/reject/<int:pk>/' from your urls.py
       final response = await http.post(
         Uri.parse('${_baseUrl}admin/reject/$id/'), 
         headers: {
@@ -143,8 +137,6 @@ class DonationService {
   Future<Map<String, dynamic>?> getLatestIssue() async {
     final token = await _storage.read(key: 'access_token');
     try {
-      // --- THE FIX ---
-      // We remove 'donations/' because _baseUrl likely already includes it.
       // Correct URL: .../api/donations/my-latest-issue/
       final response = await http.get(
         Uri.parse('${_baseUrl}my-latest-issue/'), 
@@ -153,9 +145,6 @@ class DonationService {
           'Authorization': 'Bearer $token',
         },
       );
-
-      print("Check Issue Status: ${response.statusCode}"); // Debug print
-      print("Check Issue Body: ${response.body}");       // Debug print
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);

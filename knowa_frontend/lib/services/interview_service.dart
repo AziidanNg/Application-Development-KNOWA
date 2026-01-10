@@ -1,10 +1,11 @@
+// lib/services/interview_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; 
 
 class InterviewService {
-  // Ensure this matches your backend IP
-  final String baseUrl = "http://10.0.2.2:8000/api"; 
+  // --- UPDATED: PRODUCTION URL ---
+  final String baseUrl = "https://knowa.up.railway.app/api"; 
 
   // UPDATED: Now accepts 'report' as the 3rd argument
   Future<bool> setInterviewResult(int userId, String action, String report) async {
@@ -17,7 +18,7 @@ class InterviewService {
     String? token = prefs.getString('access') ?? prefs.getString('access_token') ?? prefs.getString('token');
 
     if (token == null) {
-      print("DEBUG: Tokens found in storage: ${prefs.getKeys()}"); // This will print ALL keys to your console
+      print("DEBUG: Tokens found in storage: ${prefs.getKeys()}"); 
       print("Error: No token found");
       return false;
     }
@@ -32,7 +33,7 @@ class InterviewService {
         },
         body: jsonEncode({
           'action': action,
-          'report': report // Now this variable exists!
+          'report': report 
         }),
       );
 
@@ -54,7 +55,8 @@ class InterviewService {
     final url = Uri.parse('$baseUrl/users/admin/interviews/history/');
     
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('access'); // Use correct key
+    // Try to find the token using the same logic as above to be safe
+    String? token = prefs.getString('access') ?? prefs.getString('access_token') ?? prefs.getString('token');
 
     if (token == null) return [];
 
