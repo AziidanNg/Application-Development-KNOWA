@@ -231,8 +231,8 @@ EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
 
 # 4. Set your Verified Domain as the Sender
 # You verified '@send.knowa-app.online', so the sender MUST match that.
-DEFAULT_FROM_EMAIL = "support@send.knowa-app.online"
-SERVER_EMAIL = "support@send.knowa-app.online"
+DEFAULT_FROM_EMAIL = "support@knowa-app.online"
+SERVER_EMAIL = "support@knowa-app.online"
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
