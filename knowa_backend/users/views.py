@@ -66,7 +66,7 @@ class RegistrationView(APIView):
                 <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px;">
                     <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center;">
                         
-                        <img src="{logo_url}" alt="Knowa Logo" width="80" style="margin-bottom: 25px;">
+                        <img src="{logo_url}" alt="Knowa Logo" width="150" style="margin-bottom: 25px;">
                         
                         <h1 style="color: #1a202c; font-size: 24px; margin-bottom: 10px; font-weight: 700;">Welcome to KNOWA!</h1>
                         
@@ -136,7 +136,7 @@ class LoginRequestTACView(APIView):
             <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px;">
                 <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center;">
                     
-                    <img src="{logo_url}" alt="Knowa Logo" width="80" style="margin-bottom: 25px;">
+                    <img src="{logo_url}" alt="Knowa Logo" width="150" style="margin-bottom: 25px;">
                     
                     <h1 style="color: #1a202c; font-size: 24px; margin-bottom: 10px; font-weight: 700;">Login Verification</h1>
                     <p style="color: #718096; font-size: 16px; margin-bottom: 30px; line-height: 1.5;">
@@ -222,7 +222,7 @@ class PasswordResetRequestView(APIView):
             <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px;">
                 <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center;">
                     
-                    <img src="{logo_url}" alt="Knowa Logo" width="80" style="margin-bottom: 25px;">
+                    <img src="{logo_url}" alt="Knowa Logo" width="150" style="margin-bottom: 25px;">
                     
                     <h1 style="color: #c0392b; font-size: 24px; margin-bottom: 10px; font-weight: 700;">Reset Your Password</h1>
                     <p style="color: #718096; font-size: 16px; margin-bottom: 30px; line-height: 1.5;">
