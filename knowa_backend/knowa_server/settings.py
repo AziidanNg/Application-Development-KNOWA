@@ -206,30 +206,25 @@ SIMPLE_JWT = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# --- EMAIL CONFIGURATION (Standard TLS) ---
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587              # Standard TLS port
-EMAIL_USE_TLS = True          # Must be True
-EMAIL_USE_SSL = False         # Must be False
-EMAIL_TIMEOUT = 10            # Stop waiting after 10 seconds (prevents hanging)
+# --- EMAIL CONFIGURATION (RESEND via HTTPS) ---
+# Uses Port 443 (Allowed on Railway Free Tier)
 
-# Secrets from Railway Variables
-EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASS')
+# 1. Add 'anymail' to your installed apps list if it's not there
+if 'anymail' not in INSTALLED_APPS:
+    INSTALLED_APPS += ["anymail"]
 
-# Local Fallback
-if not EMAIL_HOST_USER:
-    try:
-        import configparser
-        config = configparser.ConfigParser()
-        config.read(os.path.join(BASE_DIR, 'my.cnf'))
-        EMAIL_HOST_USER = config.get('email', 'EMAIL_USER', fallback=None)
-        EMAIL_HOST_PASSWORD = config.get('email', 'EMAIL_PASS', fallback=None)
-    except:
-        pass
+# 2. Configure the Resend Provider
+ANYMAIL = {
+    "RESEND_API_KEY": os.environ.get("RESEND_API_KEY"),
+}
 
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# 3. Set the Backend to Resend
+EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
+
+# 4. Set your Verified Domain as the Sender
+# You verified '@send.knowa-app.online', so the sender MUST match that.
+DEFAULT_FROM_EMAIL = "support@send.knowa-app.online"
+SERVER_EMAIL = "support@send.knowa-app.online"
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
