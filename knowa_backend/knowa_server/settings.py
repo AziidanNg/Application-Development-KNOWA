@@ -19,11 +19,19 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-config = configparser.ConfigParser()
-config.read(os.path.join(BASE_DIR, 'my.cnf'))
+# --- FIX: Prevent crash if my.cnf is missing (on Railway) ---
+EMAIL_HOST_USER = None
+EMAIL_HOST_PASSWORD = None
 
-EMAIL_HOST_USER = config.get('email', 'EMAIL_USER', fallback=None)
-EMAIL_HOST_PASSWORD = config.get('email', 'EMAIL_PASS', fallback=None)
+try:
+    config = configparser.ConfigParser()
+    config.read(os.path.join(BASE_DIR, 'my.cnf'))
+    if 'email' in config:
+        EMAIL_HOST_USER = config.get('email', 'EMAIL_USER', fallback=None)
+        EMAIL_HOST_PASSWORD = config.get('email', 'EMAIL_PASS', fallback=None)
+except Exception:
+    pass
+# ------------------------------------------------------------
 
 
 # Quick-start development settings - unsuitable for production
