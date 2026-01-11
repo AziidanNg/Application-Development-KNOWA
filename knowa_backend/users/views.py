@@ -48,16 +48,58 @@ class RegistrationView(APIView):
 
             # --- 1. SET STATUS TO PUBLIC ---
             # This allows them to login, but they are not a "Member" yet.
-            # They will not appear in the Admin "Pending" list until they 'Apply'.
             user.member_status = User.MemberStatus.PUBLIC 
             user.save()
             # -------------------------------
             
-            # --- 2. SEND WELCOME EMAIL ---
+            # --- 2. SEND PROFESSIONAL WELCOME EMAIL ---
             try:
-                subject = 'Welcome to KNOWA!'
-                message = f'Hi {user.username},\n\nThank you for registering. You can now log in to the app.\nTo become a verified Member, please go to your Profile and submit a Membership Application.'
-                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+                # --- A. SETUP LINKS ---
+                # REPLACE THIS URL with your actual logo link (from GitHub or Imgur)
+                logo_url = "https://github.com/AziidanNg/Application-Development-KNOWA/blob/main/knowa_backend/users/logo.png?raw=true" 
+                website_url = "https://knowa-app.online"
+                
+                # --- B. HTML DESIGN ---
+                html_content = f"""
+                <!DOCTYPE html>
+                <html>
+                <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px;">
+                    <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center;">
+                        
+                        <img src="{logo_url}" alt="Knowa Logo" width="80" style="margin-bottom: 25px;">
+                        
+                        <h1 style="color: #1a202c; font-size: 24px; margin-bottom: 10px; font-weight: 700;">Welcome to KNOWA!</h1>
+                        
+                        <p style="color: #718096; font-size: 16px; margin-bottom: 30px; line-height: 1.6;">
+                            Hi <strong>{user.username}</strong>,<br>
+                            Thank you for joining our eco-community! You can now log in to the app to start your journey.
+                            <br><br>
+                            To become a verified Member, please go to your Profile and submit a <strong>Membership Application</strong>.
+                        </p>
+                        
+                        <a href="{website_url}" style="background-color: #2f855a; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+                            Visit Website
+                        </a>
+                        
+                        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #edf2f7;">
+                            <p style="color: #cbd5e0; font-size: 12px;">
+                                &copy; 2026 Knowa App. All rights reserved.
+                            </p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """
+
+                # --- C. SEND MAIL ---
+                send_mail(
+                    subject='Welcome to KNOWA!',
+                    # Plain text fallback for old devices
+                    message=f'Hi {user.username},\n\nThank you for registering. You can now log in to the app.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    html_message=html_content # <--- This enables the design
+                )
             except Exception as e:
                 print(f"Error sending welcome email: {e}")
             # -----------------------------
@@ -67,6 +109,7 @@ class RegistrationView(APIView):
                 'username': user.username,
                 'status': user.member_status,
             }, status=status.HTTP_201_CREATED)
+            
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginRequestTACView(APIView):
@@ -79,13 +122,63 @@ class LoginRequestTACView(APIView):
 
         if user is not None:
             tac = user.generate_tac()
-            subject = 'Your KNOWA Login Code'
-            message = f'Your temporary access code (TAC) is: {tac}\n\nThis code will expire in 5 minutes.'
+            
+            # --- PROFESSIONAL HTML EMAIL DESIGN ---
+            # 1. SETUP LINKS
+            # REPLACE this URL if you have your own logo link
+            logo_url = "https://github.com/AziidanNg/Application-Development-KNOWA/blob/main/knowa_backend/users/logo.png?raw=true" 
+            website_url = "https://knowa-app.online"
+            
+            # 2. HTML TEMPLATE
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px;">
+                <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center;">
+                    
+                    <img src="{logo_url}" alt="Knowa Logo" width="80" style="margin-bottom: 25px;">
+                    
+                    <h1 style="color: #1a202c; font-size: 24px; margin-bottom: 10px; font-weight: 700;">Login Verification</h1>
+                    <p style="color: #718096; font-size: 16px; margin-bottom: 30px; line-height: 1.5;">
+                        Hello <strong>{user.username}</strong>,<br>
+                        Please enter the following code to access your account.
+                    </p>
+                    
+                    <div style="background-color: #f0fff4; color: #2f855a; border: 1px dashed #48bb78; padding: 20px; font-size: 32px; font-weight: bold; letter-spacing: 8px; border-radius: 8px; margin-bottom: 30px;">
+                        {tac}
+                    </div>
+                    
+                    <p style="color: #a0aec0; font-size: 14px; margin-bottom: 30px;">This code will expire in 5 minutes.</p>
+
+                    <a href="{website_url}" style="background-color: #2f855a; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+                        Visit Website
+                    </a>
+                    
+                    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #edf2f7;">
+                        <p style="color: #cbd5e0; font-size: 12px;">
+                            &copy; 2026 Knowa App. All rights reserved.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
             try:
-                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+                # 3. SEND MAIL (With HTML)
+                send_mail(
+                    subject='Your KNOWA Login Code',
+                    message=f'Your temporary access code (TAC) is: {tac}', # Fallback for old phones
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    html_message=html_content # <--- THIS ENABLES THE DESIGN
+                )
                 return Response({'message': 'A 2FA code has been sent to your email.'}, status=status.HTTP_200_OK)
-            except Exception:
+            except Exception as e:
+                # Print error to logs so you can debug if it fails
+                print(f"Email Error: {str(e)}")
                 return Response({'error': 'Failed to send email.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 class LoginVerifyTACView(APIView):
@@ -116,11 +209,64 @@ class PasswordResetRequestView(APIView):
         try:
             user = User.objects.get(email=email)
             tac = user.generate_tac()
-            subject = 'Reset Your KNOWA Password'
-            message = f'Your temporary access code (TAC) for password reset is: {tac}\n\nThis code will expire in 5 minutes.'
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+            
+            # --- PROFESSIONAL HTML EMAIL DESIGN ---
+            # 1. SETUP LINKS
+            logo_url = "https://github.com/AziidanNg/Application-Development-KNOWA/blob/main/knowa_backend/users/logo.png?raw=true"
+            website_url = "https://knowa-app.online"
+            
+            # 2. HTML TEMPLATE
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px;">
+                <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center;">
+                    
+                    <img src="{logo_url}" alt="Knowa Logo" width="80" style="margin-bottom: 25px;">
+                    
+                    <h1 style="color: #c0392b; font-size: 24px; margin-bottom: 10px; font-weight: 700;">Reset Your Password</h1>
+                    <p style="color: #718096; font-size: 16px; margin-bottom: 30px; line-height: 1.5;">
+                        Hello <strong>{user.username}</strong>,<br>
+                        We received a request to reset your password. Enter the code below to proceed.
+                    </p>
+                    
+                    <div style="background-color: #fff5f5; color: #c0392b; border: 1px dashed #fc8181; padding: 20px; font-size: 32px; font-weight: bold; letter-spacing: 8px; border-radius: 8px; margin-bottom: 30px;">
+                        {tac}
+                    </div>
+                    
+                    <p style="color: #a0aec0; font-size: 14px; margin-bottom: 10px;">This code expires in 5 minutes.</p>
+                    <p style="color: #a0aec0; font-size: 13px; margin-bottom: 30px; font-style: italic;">If you did not request a password reset, you can safely ignore this email.</p>
+
+                    <a href="{website_url}" style="background-color: #718096; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+                        Visit Support
+                    </a>
+                    
+                    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #edf2f7;">
+                        <p style="color: #cbd5e0; font-size: 12px;">
+                            &copy; 2026 Knowa App. All rights reserved.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            # 3. SEND MAIL
+            send_mail(
+                subject='Reset Your KNOWA Password',
+                message=f'Your password reset code is: {tac}', # Fallback text
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_content # <--- Enables Design
+            )
+
         except User.DoesNotExist:
-            pass # Security: Don't reveal if email exists
+            pass # Security: Don't reveal if email exists or not
+        except Exception as e:
+            # Optional: Print error for debugging
+            print(f"Password Reset Email Error: {e}")
+
+        # Always return 200 OK to prevent email enumeration attacks
         return Response({'status': 'Password reset email sent.'}, status=status.HTTP_200_OK)
 
 class PasswordResetConfirmView(APIView):
