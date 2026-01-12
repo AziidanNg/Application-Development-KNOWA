@@ -1,9 +1,12 @@
+// lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/membership_application_screen.dart';
 import 'package:knowa_frontend/main.dart'; 
 import 'package:knowa_frontend/screens/admin_feedback_screen.dart';
+// --- IMPORT THE NEW SETTINGS SCREENS ---
+import 'package:knowa_frontend/screens/settings_sub_screens.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -40,7 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // --- NEW: Feedback Dialog Logic ---
+  // --- IMPROVED FEEDBACK DIALOG (WIDTH & HEIGHT FIXED) ---
   void _showFeedbackDialog() {
     final TextEditingController _messageController = TextEditingController();
     String _selectedCategory = 'IMPROVEMENT';
@@ -48,42 +51,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder( // Needed to update the Dropdown inside Dialog
+        return StatefulBuilder( 
           builder: (context, setDialogState) {
             return AlertDialog(
               title: const Text('Send Feedback'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Help us improve the app!'),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: _selectedCategory,
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'BUG', child: Text('Bug Report')),
-                      DropdownMenuItem(value: 'FEATURE', child: Text('Feature Request')),
-                      DropdownMenuItem(value: 'IMPROVEMENT', child: Text('Improvement')),
-                      DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+              content: SizedBox(
+                width: double.maxFinite, // Fix width
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Help us improve the app!'),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: _selectedCategory,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'BUG', child: Text('Bug Report')),
+                          DropdownMenuItem(value: 'FEATURE', child: Text('Feature Request')),
+                          DropdownMenuItem(value: 'IMPROVEMENT', child: Text('Improvement')),
+                          DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                        ],
+                        onChanged: (value) {
+                          setDialogState(() => _selectedCategory = value!);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _messageController,
+                        minLines: 4, // Fix height
+                        maxLines: 4, 
+                        decoration: const InputDecoration(
+                          labelText: 'Your Message',
+                          alignLabelWithHint: true,
+                          border: OutlineInputBorder(),
+                          hintText: 'Tell us what you think...',
+                        ),
+                      ),
                     ],
-                    onChanged: (value) {
-                      setDialogState(() => _selectedCategory = value!);
-                    },
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _messageController,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Your Message',
-                      border: OutlineInputBorder(),
-                      hintText: 'Tell us what you think...',
-                    ),
-                  ),
-                ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -93,22 +105,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     if (_messageController.text.trim().isEmpty) return;
-
-                    // Close dialog first
-                    Navigator.pop(context);
-
-                    // Show loading snackbar
+                    Navigator.pop(context); 
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Sending feedback...')),
                     );
-
-                    // Call API
                     bool success = await _authService.submitFeedback(
                       _selectedCategory,
                       _messageController.text,
                     );
-
-                    // Show result
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -153,10 +157,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // --- 1. SETTINGS BUTTON (Top Right) ---
           IconButton(
             icon: const Icon(Icons.settings_outlined, color: Colors.black),
             onPressed: () {
-              // TODO: Navigate to Settings
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
             },
           ),
         ],
@@ -185,7 +193,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 24),
-                // --- Avatar Section ---
                 const CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.grey,
@@ -219,11 +226,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 32),
                 
-                // --- Support Section (NEW) ---
                 // --- Support Section ---
                 _buildSectionHeader('Support'),
                 
-                // 1. Regular User Button (Everyone sees this)
                 _buildInfoRow(
                   icon: Icons.feedback_outlined,
                   label: 'Send Feedback',
@@ -231,21 +236,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onTap: _showFeedbackDialog,
                 ),
 
-                // 2. ADMIN ONLY Button (Only shows if is_staff is true)
                 if (userData['is_staff'] == true) ...[
-                  const SizedBox(height: 8), // Small gap
+                  const SizedBox(height: 8), 
                   Container(
                     margin: const EdgeInsets.only(top: 8),
                     decoration: BoxDecoration(
-                      // Changed from purple to a professional admin blue-grey
                       color: Colors.blueGrey.shade50,
                       borderRadius: BorderRadius.circular(12),
-                      // Added a subtle border to make it pop
                       border: Border.all(color: Colors.blueGrey.shade100),
                     ),
                     child: _buildInfoRow(
                       icon: Icons.admin_panel_settings_outlined,
-                      // Changed icon color to match the theme
                       iconColor: Colors.blueGrey.shade700,
                       label: 'View User Feedback',
                       value: 'Admin',
@@ -263,17 +264,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // --- Settings Section ---
                 _buildSectionHeader('Settings'),
+                
+                // --- 2. NOTIFICATIONS BUTTON ---
                 _buildInfoRow(
                   icon: Icons.notifications_outlined,
                   label: 'Notifications',
                   value: '',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+                    );
+                  },
                 ),
+                
+                // --- 3. PRIVACY BUTTON ---
                 _buildInfoRow(
                   icon: Icons.lock_outline,
                   label: 'Privacy',
                   value: '',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PrivacyScreen()),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 32),
@@ -301,7 +316,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
-      child: Align( // Added Align to ensure left alignment
+      child: Align( 
         alignment: Alignment.centerLeft,
         child: Text(
           title,
@@ -316,14 +331,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required String value,
     VoidCallback? onTap,
-    // Add this new optional parameter
     Color? iconColor,
   }) {
     return ListTile(
-      // Use the custom color if provided, otherwise default to grey
       leading: Icon(icon, color: iconColor ?? Colors.grey[700]),
       title: Text(label),
-      // ... rest of the function is the same ...
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -336,7 +348,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       onTap: onTap,
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4), // Added padding for better look in container
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), 
     );
   }
 

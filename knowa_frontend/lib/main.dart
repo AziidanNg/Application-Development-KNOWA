@@ -2,9 +2,14 @@
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/screens/splash_screen.dart';
 import 'package:knowa_frontend/screens/login_screen.dart'; 
-import 'package:knowa_frontend/widgets/global_chatbot.dart'; 
+import 'package:knowa_frontend/widgets/global_chatbot.dart';
+import 'package:knowa_frontend/services/local_notification_service.dart'; 
 
-void main() {
+void main() async {
+  // --- 2. INITIALIZE SERVICES BEFORE APP RUNS ---
+  WidgetsFlutterBinding.ensureInitialized();
+  await LocalNotificationService.initialize();
+  
   runApp(const MyApp());
 }
 
@@ -19,6 +24,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
+      debugShowCheckedModeBanner: false,
       home: const SplashScreen(),
     );
   }
@@ -26,7 +32,7 @@ class MyApp extends StatelessWidget {
 
 class AppRootWrapper extends StatelessWidget {
   final Widget child;
-  final double bottomNavOffset; // <--- New parameter
+  final double bottomNavOffset; // Used to push Chatbot up if Nav Bar is present
 
   const AppRootWrapper({
     super.key, 
@@ -39,7 +45,8 @@ class AppRootWrapper extends StatelessWidget {
     return Stack(
       children: [
         child,
-        GlobalChatbot(additionalBottomPadding: bottomNavOffset), // <--- Pass it here
+        // Global Chatbot is always on top, adjusted by offset
+        GlobalChatbot(additionalBottomPadding: bottomNavOffset), 
       ],
     );
   }
