@@ -32,6 +32,7 @@ from .serializers import (
 from events.models import Event, Meeting
 from donations.models import Donation, DonationStatus
 from chat.models import ChatRoom
+from chatbot.models import FAQ
 
 
 # ==========================================
