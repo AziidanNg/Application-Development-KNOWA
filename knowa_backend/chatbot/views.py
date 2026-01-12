@@ -11,7 +11,7 @@ class FAQListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         
-        # 2. Base rule: ALWAYS show questions meant for 'all'
+        # 2. Base rule: EVERYONE (Guests & Users) sees questions meant for 'all'
         filters = Q(target_role='all')
 
         # 3. Check if user is actually logged in
@@ -23,10 +23,9 @@ class FAQListView(generics.ListAPIView):
             else:
                 # Regular members see 'all' + 'participant'
                 filters |= Q(target_role='participant')
-        else:
-            # --- GUEST LOGIC (Not Logged In) ---
-            # Guests see 'all' + 'participant' (assuming "how to join" info is for participants)
-            # You can remove the line below if you ONLY want them to see 'all'
-            filters |= Q(target_role='participant')
+        
+        # --- GUEST LOGIC ---
+        # We removed the 'else' block. 
+        # If they are not logged in, they only keep the base filter (target_role='all').
 
         return FAQ.objects.filter(filters).distinct()
