@@ -737,19 +737,20 @@ class UserSelectionListView(APIView):
 # AI CHATBOT VIEW
 # ==========================================
 
-# Don't forget to import your model at the top
-from .models import FAQ 
-
 class AIChatbotView(APIView):
-    permission_classes = [permissions.AllowAny] 
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         user_message = request.data.get('message')
+
         if not user_message:
             return Response({'error': 'Message is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # --- 1. FETCH EVENTS (Keep this, it's good) ---
+            # DEBUG: Print that we started
+            print(f"DEBUG: Processing chatbot request: {user_message}")
+
+            # --- 1. FETCH REAL DATA ---
             upcoming_events = Event.objects.filter(
                 status='PUBLISHED',
                 start_time__gte=timezone.now()
@@ -763,48 +764,47 @@ class AIChatbotView(APIView):
             else:
                 events_context += "No upcoming events found.\n"
 
-            # --- 2. FETCH REAL DB FAQS (The Upgrade) ---
-            # Instead of just hardcoding, let's grab the ones you imported!
-            db_faqs = FAQ.objects.all()
-            faq_context = "COMMON QUESTIONS & ANSWERS:\n"
-            for faq in db_faqs:
-                faq_context += f"Q: {faq.question}\nA: {faq.answer}\n"
-
-            # --- 3. HARDCODED MANUAL (Keep as backup) ---
+            # --- 2. DEFINE MANUAL ---
             app_manual = (
-                "BASIC INSTRUCTIONS:\n"
+                "APP INSTRUCTIONS (KNOWA MANUAL):\n"
                 "1. REGISTRATION: Click 'Sign Up' on the Login screen.\n"
-                "2. MEMBERSHIP: Status starts as 'Pending'. Pay fees to approve.\n"
-                "3. DONATIONS: Use the blue 'Donate' button.\n"
-                "4. PASSWORD: Use 'Forgot Password' for TAC code.\n"
+                "2. MEMBERSHIP: Status starts as 'Pending'. Once approved by Admin, pay fees to become a 'Member'.\n"
+                "3. DONATIONS: Use the blue 'Donate' button on the Dashboard.\n"
+                "4. EVENTS: Check the 'Events' tab. Online events have Zoom/Meet links.\n"
+                "5. MEETINGS: Admins create meetings; see them in 'Calendar'.\n"
+                "6. PASSWORD: Use 'Forgot Password?' on the login screen to get a TAC code.\n"
             )
 
-            # --- 4. CONFIGURE GEMINI ---
+            # --- 3. CONFIGURE NEW CLIENT ---
             api_key = getattr(settings, 'GEMINI_API_KEY', None)
+            if not api_key:
+                print("CRITICAL: Missing API Key in settings")
+                return Response({'error': 'Missing API Key'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # --- NEW SDK SYNTAX ---
             client = genai.Client(api_key=api_key)
 
-            # Combine everything into the prompt
             full_prompt = (
                 "You are the friendly AI support for KNOWA app. "
-                "Answer using the context below.\n\n"
+                "Answer using the manual and event list below. "
+                "If not sure, say 'Contact admin@knowa.org'.\n\n"
                 f"{app_manual}\n"
-                "---------------------\n"
-                f"{faq_context}\n"  # <--- NOW THE AI KNOWS YOUR DB!
                 "---------------------\n"
                 f"{events_context}\n"
                 "---------------------\n"
                 f"USER QUESTION: {user_message}"
             )
 
+            # Generate Content using the new method
             response = client.models.generate_content(
-                model='gemini-2.0-flash', # Or 1.5-flash
+                model='gemini-2.5-flash',
                 contents=full_prompt
             )
-
+            # Access text via response.text
             return Response({'reply': response.text}, status=status.HTTP_200_OK)
 
         except Exception as e:
-            print(f"Chatbot Error: {e}")
+            print(f"CRITICAL CHATBOT ERROR: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserOptionsView(APIView):
