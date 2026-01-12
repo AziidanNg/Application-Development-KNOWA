@@ -16,7 +16,7 @@ class AdminManageApplicationsScreen extends StatefulWidget {
 class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsScreen> {
   final AuthService _authService = AuthService();
   late Future<List<PendingUser>> _pendingUsersFuture;
-  bool _isLoading = false; // Added loading state for dialog actions
+  bool _isLoading = false; 
 
   @override
   void initState() {
@@ -53,7 +53,7 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
        reason: reason,
        date: date,
        link: link,
-       interviewerId: staffId // <--- FIX: Change 'staffId' to 'interviewerId' here
+       interviewerId: staffId 
     );
 
     setState(() { _isLoading = false; });
@@ -366,6 +366,9 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
 
   @override
   Widget build(BuildContext context) {
+    // 1. GET SYSTEM PADDING (Navigation Bar Height)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Member Applications'),
@@ -384,6 +387,9 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
           List<PendingUser> pendingUsers = snapshot.data!;
 
           return ListView.builder(
+            // 2. APPLY DYNAMIC PADDING
+            // Adds system nav bar height to the bottom so the last item isn't hidden
+            padding: EdgeInsets.only(bottom: 16 + bottomPadding), 
             itemCount: pendingUsers.length,
             itemBuilder: (context, index) {
               final user = pendingUsers[index];
@@ -456,9 +462,7 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                             color: Colors.white,
                             textColor: Colors.blue.shade700,
                             borderColor: Colors.blue.shade700,
-                            // --- FIX: Call the Schedule Dialog ---
                             onPressed: () => _showScheduleDialog(user), 
-                            // -------------------------------------
                           ),
                         ],
                       )

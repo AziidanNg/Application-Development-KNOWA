@@ -13,8 +13,6 @@ class AdminPendingPaymentsScreen extends StatefulWidget {
       _AdminPendingPaymentsScreenState();
 }
 
-// lib/screens/admin_pending_payments_screen.dart
-
 class _AdminPendingPaymentsScreenState extends State<AdminPendingPaymentsScreen> {
   final AuthService _authService = AuthService();
   late Future<List<PendingUser>> _pendingPaymentsFuture;
@@ -78,6 +76,9 @@ class _AdminPendingPaymentsScreenState extends State<AdminPendingPaymentsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // 1. GET SYSTEM PADDING (Navigation Bar Height)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pending Payments'),
@@ -97,6 +98,9 @@ class _AdminPendingPaymentsScreenState extends State<AdminPendingPaymentsScreen>
 
           // --- THIS IS THE NEW, SIMPLER LIST ---
           return ListView.builder(
+            // 2. APPLY DYNAMIC PADDING
+            // Adds system nav bar height to the bottom so the last item isn't obscured
+            padding: EdgeInsets.only(bottom: 16 + bottomPadding), 
             itemCount: pendingUsers.length,
             itemBuilder: (context, index) {
               final user = pendingUsers[index];

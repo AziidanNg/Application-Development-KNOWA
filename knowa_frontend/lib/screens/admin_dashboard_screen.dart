@@ -7,7 +7,7 @@ import 'package:knowa_frontend/screens/admin_pending_payments_screen.dart';
 import 'package:knowa_frontend/screens/admin_pending_donations_screen.dart';
 import 'package:knowa_frontend/screens/admin_manage_events_screen.dart';
 import 'package:knowa_frontend/models/admin_stats.dart'; 
-import 'package:knowa_frontend/screens/notification_screen.dart'; // <--- 1. IMPORT THIS
+import 'package:knowa_frontend/screens/notification_screen.dart';
 import 'package:intl/intl.dart'; 
 import 'package:knowa_frontend/main.dart';
 import 'package:knowa_frontend/screens/admin_interview_history_screen.dart';
@@ -48,6 +48,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final currencyFormatter = NumberFormat.currency(locale: 'en_MY', symbol: 'RM');
+    
+    // 1. GET SYSTEM PADDING (Navigation Bar Height)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       appBar: AppBar(
@@ -55,7 +58,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          // --- 2. ADD NOTIFICATION BUTTON HERE ---
+          // --- Notification Button ---
           IconButton(
             icon: const Icon(Icons.notifications_none_outlined, color: Colors.black),
             onPressed: () {
@@ -64,7 +67,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               );
             },
           ),
-          // ---------------------------------------
           
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black),
@@ -74,7 +76,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        // 2. APPLY DYNAMIC PADDING
+        // Replaces const EdgeInsets.all(16.0)
+        padding: EdgeInsets.only(
+          left: 16.0,
+          right: 16.0,
+          top: 16.0,
+          bottom: 16.0 + bottomPadding, // <--- The Fix: Adds nav bar height
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

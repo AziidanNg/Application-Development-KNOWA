@@ -1,3 +1,4 @@
+// lib/screens/admin_feedback_screen.dart
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/services/auth_service.dart';
 
@@ -44,6 +45,9 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 1. GET SYSTEM PADDING (Navigation Bar Height)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -80,7 +84,14 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
           final feedbackList = snapshot.data!;
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            // 2. APPLY DYNAMIC PADDING
+            // Replaced const EdgeInsets.all(16) to include bottomPadding
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: 16 + bottomPadding, // <--- The Fix
+            ),
             itemCount: feedbackList.length,
             separatorBuilder: (c, i) => const SizedBox(height: 12),
             itemBuilder: (context, index) {

@@ -200,6 +200,9 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 1. GET SYSTEM PADDING (Navigation Bar Height)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditMode ? 'Edit Event' : 'New Event'),
@@ -209,7 +212,14 @@ class _AdminCreateEventScreenState extends State<AdminCreateEventScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        // 2. APPLY DYNAMIC PADDING
+        // We keep your original 24.0 spacing but add the system padding to the bottom.
+        padding: EdgeInsets.only(
+          left: 24.0, 
+          right: 24.0, 
+          top: 24.0, 
+          bottom: 24.0 + bottomPadding, // <--- The Fix
+        ),
         child: Form(
           key: _formKey,
           child: Column(

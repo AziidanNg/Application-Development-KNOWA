@@ -51,7 +51,6 @@ class _AdminPendingDonationsScreenState extends State<AdminPendingDonationsScree
   }
 
   // Function to handle the admin action
-  // Function to handle the admin action
   void _handleDonation(int donationId, String action, {String? reason}) async {
     bool success = false;
     String successMessage = '';
@@ -142,6 +141,9 @@ class _AdminPendingDonationsScreenState extends State<AdminPendingDonationsScree
 
   @override
   Widget build(BuildContext context) {
+    // 1. GET SYSTEM PADDING (Navigation Bar Height)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pending Donations'),
@@ -160,6 +162,9 @@ class _AdminPendingDonationsScreenState extends State<AdminPendingDonationsScree
           List<Donation> pendingDonations = snapshot.data!;
 
           return ListView.builder(
+            // 2. APPLY DYNAMIC PADDING
+            // Adds system nav bar height to the bottom so the last item isn't obscured
+            padding: EdgeInsets.only(bottom: 16 + bottomPadding), 
             itemCount: pendingDonations.length,
             itemBuilder: (context, index) {
               final donation = pendingDonations[index];

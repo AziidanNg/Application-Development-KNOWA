@@ -1,3 +1,4 @@
+// lib/screens/admin_manage_events_screen.dart
 import 'package:flutter/material.dart';
 import 'package:knowa_frontend/screens/admin_create_event_screen.dart';
 import 'package:knowa_frontend/models/event.dart';
@@ -118,7 +119,13 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
           return const Center(child: Text('No events in this category.'));
         }
 
+        // --- 1. GET SYSTEM PADDING (Navigation Bar Height) ---
+        final bottomPadding = MediaQuery.of(context).padding.bottom;
+
         return ListView.builder(
+          // --- 2. APPLY DYNAMIC PADDING ---
+          // Adds bottomPadding + 16 so the last card isn't hidden behind the nav bar
+          padding: EdgeInsets.only(top: 8, bottom: 16 + bottomPadding),
           itemCount: filteredEvents.length,
           itemBuilder: (context, index) {
             return _buildEventListItem(filteredEvents[index]);
@@ -192,8 +199,6 @@ class _AdminManageEventsScreenState extends State<AdminManageEventsScreen> with 
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.red),
               onPressed: () {
-                // This stops the tap from triggering the "edit" action
-                (e) => e.stopPropagation(); 
                 _confirmDelete(event); // Call the delete confirmation
               },
             ),

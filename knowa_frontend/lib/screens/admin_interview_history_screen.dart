@@ -1,3 +1,4 @@
+// lib/screens/admin_interview_history_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/interview_service.dart';
@@ -32,6 +33,9 @@ class _AdminInterviewHistoryScreenState extends State<AdminInterviewHistoryScree
 
   @override
   Widget build(BuildContext context) {
+    // 1. GET SYSTEM PADDING (Navigation Bar Height)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Interview Reports", style: TextStyle(color: Colors.black)),
@@ -44,7 +48,14 @@ class _AdminInterviewHistoryScreenState extends State<AdminInterviewHistoryScree
           : _history.isEmpty
               ? const Center(child: Text("No past interviews found."))
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  // 2. APPLY DYNAMIC PADDING
+                  // Replaced const EdgeInsets.all(16)
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 16 + bottomPadding, // <--- The Fix: Adds nav bar height
+                  ),
                   itemCount: _history.length,
                   itemBuilder: (context, index) {
                     final item = _history[index];

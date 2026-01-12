@@ -110,49 +110,49 @@ class _AdminCreateMeetingScreenState extends State<AdminCreateMeetingScreen> {
   
   // --- 3. Submit Logic (Create vs Update) ---
   void _submit() async {
-     if (!_formKey.currentState!.validate()) return;
-     
-     // Only check participants if CREATING. If Updating, keeping empty might mean "no change" 
-     if (widget.meetingToEdit == null && _selectedParticipantIds.isEmpty) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Select at least one participant")));
-       return;
-     }
+      if (!_formKey.currentState!.validate()) return;
+      
+      // Only check participants if CREATING. If Updating, keeping empty might mean "no change" 
+      if (widget.meetingToEdit == null && _selectedParticipantIds.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Select at least one participant")));
+        return;
+      }
 
-     setState(() { _isLoading = true; });
+      setState(() { _isLoading = true; });
 
-     final startDateTime = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _startTime.hour, _startTime.minute);
-     final endDateTime = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _endTime.hour, _endTime.minute);
+      final startDateTime = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _startTime.hour, _startTime.minute);
+      final endDateTime = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _endTime.hour, _endTime.minute);
 
-     final data = {
-       "title": _titleController.text,
-       "description": _descriptionController.text,
-       "start_time": startDateTime.toIso8601String(),
-       "end_time": endDateTime.toIso8601String(),
-       "is_online": _isOnline,
-       "location": _locationController.text,
-       // Only send participants if the user actually selected something
-       if (_selectedParticipantIds.isNotEmpty) "participants": _selectedParticipantIds,
-     };
+      final data = {
+        "title": _titleController.text,
+        "description": _descriptionController.text,
+        "start_time": startDateTime.toIso8601String(),
+        "end_time": endDateTime.toIso8601String(),
+        "is_online": _isOnline,
+        "location": _locationController.text,
+        // Only send participants if the user actually selected something
+        if (_selectedParticipantIds.isNotEmpty) "participants": _selectedParticipantIds,
+      };
 
-     final EventService service = EventService();
-     bool success;
+      final EventService service = EventService();
+      bool success;
 
-     // --- Check if Editing or Creating ---
-     if (widget.meetingToEdit != null) {
-       success = await service.updateMeeting(widget.meetingToEdit!['id'], data);
-     } else {
-       success = await service.createMeeting(data);
-     }
-     
-     setState(() { _isLoading = false; });
+      // --- Check if Editing or Creating ---
+      if (widget.meetingToEdit != null) {
+        success = await service.updateMeeting(widget.meetingToEdit!['id'], data);
+      } else {
+        success = await service.createMeeting(data);
+      }
+      
+      setState(() { _isLoading = false; });
 
-     if (mounted) {
-       if (success) {
-         Navigator.pop(context, true); // Return success
-       } else {
+      if (mounted) {
+        if (success) {
+          Navigator.pop(context, true); // Return success
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Operation failed")));
-       }
-     }
+        }
+      }
   }
 
   // --- Helper for Consistent Styling ---
@@ -203,6 +203,9 @@ class _AdminCreateMeetingScreenState extends State<AdminCreateMeetingScreen> {
   @override
   Widget build(BuildContext context) {
     bool isEditing = widget.meetingToEdit != null;
+    
+    // 1. GET SYSTEM PADDING (Navigation Bar Height)
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       appBar: AppBar(
@@ -213,7 +216,14 @@ class _AdminCreateMeetingScreenState extends State<AdminCreateMeetingScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        // 2. APPLY DYNAMIC PADDING
+        // Keep 24.0 spacing but add system bottom padding
+        padding: EdgeInsets.only(
+          left: 24.0, 
+          right: 24.0, 
+          top: 24.0, 
+          bottom: 24.0 + bottomPadding, // <--- The Fix
+        ),
         child: Form(
           key: _formKey,
           child: Column(
