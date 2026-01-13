@@ -467,10 +467,10 @@ class AdminDashboardStatsView(APIView):
         
         current_pending_count = User.objects.filter(member_status='PENDING').count()
 
-        # --- 4. EVENTS GROWTH ---
-        # Compare: Events created This Month vs Last Month
-        events_now = Event.objects.filter(created_at__gte=start_month).count()
-        events_last = Event.objects.filter(created_at__range=(last_month_start, last_month_end)).count()
+       # --- 4. EVENTS GROWTH (Fixed) ---
+        # Changed 'created_at' to 'start_time' because your model lacks created_at
+        events_now = Event.objects.filter(start_time__gte=start_month).count()
+        events_last = Event.objects.filter(start_time__range=(last_month_start, last_month_end)).count()
         event_growth = self.get_percentage_change(events_now, events_last)
         
         active_events = Event.objects.filter(status='PUBLISHED', end_time__gte=now).count()
