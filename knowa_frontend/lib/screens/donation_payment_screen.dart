@@ -102,8 +102,8 @@ class _DonationPaymentScreenState extends State<DonationPaymentScreen> {
                     const Text('NGO BANK ACCOUNT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 8),
                     const Text('Bank Name: Maybank'),
-                    const Text('Account Name: KNOWA NGO'),
-                    const Text('Account Number: 1234 5678 9012'),
+                    const Text('Account Name: PERTUBUHAN ILMIAH PULAU PINANG'),
+                    const Text('Account Number: 557036648153'),
                     const SizedBox(height: 16),
                     const Divider(),
                     const SizedBox(height: 10),
@@ -114,7 +114,7 @@ class _DonationPaymentScreenState extends State<DonationPaymentScreen> {
                     const SizedBox(height: 16),
                     // --- THIS IS YOUR IMAGE ---
                     Image.asset(
-                      'assets/images/knowa_qr_testing.png', // <-- Make sure this filename matches yours
+                      'assets/images/qr_knowa_new.jpg', // <-- Make sure this filename matches yours
                       width: double.infinity,
                       fit: BoxFit.contain,
                     ),

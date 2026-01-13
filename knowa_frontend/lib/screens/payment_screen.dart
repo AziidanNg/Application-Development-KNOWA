@@ -97,8 +97,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     Text('NGO BANK ACCOUNT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     SizedBox(height: 8),
                     Text('Bank Name: Maybank'),
-                    Text('Account Name: KNOWA NGO'),
-                    Text('Account Number: 1234 5678 9012'),
+                    Text('Account Name: PERTUBUHAN ILMIAH PULAU PINANG'),
+                    Text('Account Number: 557036648153'),
                     SizedBox(height: 16),
                     // You could also add an Image.asset('assets/qr_code.png') here
                     const Text(
@@ -107,7 +107,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ),
                     const SizedBox(height: 16),
                     Image.asset(
-                      'assets/images/knowa_qr_testing.png', // <-- Make sure this filename matches yours
+                      'assets/images/qr_knowa_new.jpg', // <-- Make sure this filename matches yours
                       width: double.infinity,
                       fit: BoxFit.contain,
                     ),
