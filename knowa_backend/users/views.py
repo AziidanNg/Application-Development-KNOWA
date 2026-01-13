@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.db.models import Sum, Q
+from datetime import timedelta
 
 # --- 2. REST FRAMEWORK IMPORTS ---
 from rest_framework.views import APIView
