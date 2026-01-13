@@ -45,7 +45,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormatter = NumberFormat.currency(locale: 'en_MY', symbol: 'RM');
+    // FIX 1: Set decimalDigits to 0 to remove cents (e.g. RM1,480 instead of RM1,480.00)
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'en_MY', 
+      symbol: 'RM', 
+      decimalDigits: 0 
+    );
+    
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
@@ -113,41 +119,36 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         _buildStatCard(
                           'Total Members', 
-                          stats.totalMembers.toString(), 
-                          '+10%', 
-                          Colors.green
+                          stats.totalMembers.toString(),
+                          stats.memberGrowth, // REAL DATA
                         ),
                         _buildStatCard(
                           'Pending Apps', 
                           stats.pendingApplications.toString(), 
-                          '-5%', 
-                          Colors.red
+                          stats.pendingGrowth, // REAL DATA
                         ),
                         _buildStatCard(
                           'Active Events', 
                           stats.activeEvents.toString(), 
-                          '+20%', 
-                          Colors.green
+                          stats.eventGrowth, // REAL DATA
                         ),
                         _buildStatCard(
                           'Monthly Donations', 
                           currencyFormatter.format(stats.monthlyDonations), 
-                          '+15%', 
-                          Colors.green
+                          stats.donationGrowth, // REAL DATA
                         ),
                       ],
                     ),
 
                     const SizedBox(height: 32),
 
-                    // --- 2. USER COMPOSITION CHART (UPDATED) ---
+                    // --- 2. USER COMPOSITION CHART ---
                     const Text(
                       "User Composition", 
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
                     ),
                     const SizedBox(height: 16),
                     Container(
-                      // REMOVED FIXED HEIGHT so it grows dynamically
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -229,7 +230,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, String change, Color changeColor) {
+  // --- UPDATED STAT CARD FUNCTION ---
+  Widget _buildStatCard(String title, String value, String change) {
+    // Determine color: Green if "+", Red if "-", Grey otherwise
+    Color changeColor = Colors.grey;
+    if (change.startsWith('+')) changeColor = Colors.green;
+    if (change.startsWith('-')) changeColor = Colors.red;
+
     return Card(
       elevation: 2.0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -237,13 +244,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+            Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
             const SizedBox(height: 8),
-            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            
+            // Main Value (FittedBox prevents overflow for big numbers)
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value, 
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)
+              ),
+            ),
+            
             const SizedBox(height: 8),
-            Text(change, style: TextStyle(color: changeColor, fontWeight: FontWeight.bold)),
+            
+            // Percentage Change (Real Data)
+            Text(
+              change, 
+              style: TextStyle(color: changeColor, fontWeight: FontWeight.bold)
+            ),
           ],
         ),
       ),
@@ -267,9 +289,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // --- HELPER FOR PIE CHART (UPDATED LAYOUT) ---
   Widget _buildCompositionChart(Map<String, int> data) {
-    // Define colors for specific keys
     final Map<String, Color> categoryColors = {
       'Public Users': Colors.blue.shade300,
       'NGO Members': Colors.green,
@@ -285,7 +305,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             color: categoryColors[key] ?? Colors.grey,
             value: value.toDouble(),
             title: '$value',
-            radius: 45, // Slightly smaller radius to look neat
+            radius: 45,
             titleStyle: const TextStyle(
               fontSize: 14, 
               fontWeight: FontWeight.bold, 
@@ -296,12 +316,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
     });
 
-    // Use Column to stack Chart ON TOP of Legend
     return Column(
       children: [
-        // 1. THE PIE CHART (Top)
         SizedBox(
-          height: 180, // Dedicated height for just the chart circle
+          height: 180,
           child: PieChart(
             PieChartData(
               sections: sections,
@@ -312,13 +330,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ),
         
-        const SizedBox(height: 24), // Space between chart and legend
+        const SizedBox(height: 24), 
 
-        // 2. THE LEGEND (Bottom, Wrapped)
         Wrap(
           alignment: WrapAlignment.center,
-          spacing: 16,     // Horizontal space
-          runSpacing: 12,  // Vertical space
+          spacing: 16,    
+          runSpacing: 12,  
           children: data.entries.map((entry) {
             if (entry.value == 0) return const SizedBox.shrink();
             return Row(

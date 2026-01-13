@@ -430,36 +430,82 @@ class StaffListView(APIView):
 class AdminDashboardStatsView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
+    def get_percentage_change(self, current, previous):
+        if previous == 0:
+            return "+100%" if current > 0 else "0%"
+        change = ((current - previous) / previous) * 100
+        sign = "+" if change > 0 else ""
+        return f"{sign}{int(change)}%"
+
     def get(self, request, format=None):
-        # 1. Total (Counts everyone)
+        now = timezone.now()
+        
+        # --- 1. DEFINE TIME RANGES ---
+        # Current Month
+        start_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        # Previous Month
+        last_month_end = start_month - timedelta(seconds=1)
+        last_month_start = last_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # --- 2. MEMBERS GROWTH ---
+        # Compare: Users joined THIS month vs LAST month
+        new_users_now = User.objects.filter(date_joined__gte=start_month).count()
+        new_users_last = User.objects.filter(date_joined__range=(last_month_start, last_month_end)).count()
+        member_growth = self.get_percentage_change(new_users_now, new_users_last)
+        
         total_members = User.objects.count()
+
+        # --- 3. PENDING APPS GROWTH ---
+        # Compare: Current pending vs Pending at start of month (Approximation: New pending apps this month)
+        # Note: True historical "pending count" is hard without history tables. 
+        # We will compare "New Pending Applications" this month vs last.
+        pending_now = User.objects.filter(member_status='PENDING', date_joined__gte=start_month).count()
+        pending_last = User.objects.filter(member_status='PENDING', date_joined__range=(last_month_start, last_month_end)).count()
+        pending_growth = self.get_percentage_change(pending_now, pending_last)
         
-        # 2. Other Stats (Keep existing logic)
-        pending_applications = User.objects.filter(member_status=User.MemberStatus.PENDING).count()
-        active_events = Event.objects.filter(status=Event.EventStatus.PUBLISHED, end_time__gte=timezone.now()).count()
+        current_pending_count = User.objects.filter(member_status='PENDING').count()
+
+        # --- 4. EVENTS GROWTH ---
+        # Compare: Events created This Month vs Last Month
+        events_now = Event.objects.filter(created_at__gte=start_month).count()
+        events_last = Event.objects.filter(created_at__range=(last_month_start, last_month_end)).count()
+        event_growth = self.get_percentage_change(events_now, events_last)
         
-        current_month = timezone.now().month
-        current_year = timezone.now().year
-        monthly_donations = Donation.objects.filter(
+        active_events = Event.objects.filter(status='PUBLISHED', end_time__gte=now).count()
+
+        # --- 5. DONATIONS GROWTH (Financial) ---
+        donations_now = Donation.objects.filter(
             status=DonationStatus.APPROVED,
-            submitted_at__year=current_year,
-            submitted_at__month=current_month
+            submitted_at__gte=start_month
         ).aggregate(Sum('amount'))['amount__sum'] or 0.00
 
-        # --- 3. FIXED USER COMPOSITION LOGIC ---
-        # Priority 1: Count Staff First
-        staff_count = User.objects.filter(is_staff=True).count()
+        donations_last = Donation.objects.filter(
+            status=DonationStatus.APPROVED,
+            submitted_at__range=(last_month_start, last_month_end)
+        ).aggregate(Sum('amount'))['amount__sum'] or 0.00
 
-        # Priority 2: Count others ONLY if they are NOT staff
-        member_count = User.objects.filter(member_status='MEMBER', is_staff=False).count()
+        donation_growth = self.get_percentage_change(donations_now, donations_last)
+
+        # --- 6. USER COMPOSITION ---
         public_count = User.objects.filter(member_status='PUBLIC', is_staff=False).count()
+        member_count = User.objects.filter(member_status='MEMBER', is_staff=False).count()
         pending_count = User.objects.filter(member_status='PENDING', is_staff=False).count()
+        staff_count = User.objects.filter(is_staff=True).count()
 
         data = {
             'total_members': total_members,
-            'pending_applications': pending_applications,
+            'member_growth': member_growth,  # <--- NEW REAL DATA
+            
+            'pending_applications': current_pending_count,
+            'pending_growth': pending_growth, # <--- NEW REAL DATA
+            
             'active_events': active_events,
-            'monthly_donations': monthly_donations,
+            'event_growth': event_growth,     # <--- NEW REAL DATA
+            
+            'monthly_donations': donations_now,
+            'donation_growth': donation_growth, # <--- NEW REAL DATA
+            
             'user_composition': {
                 'Public Users': public_count,
                 'NGO Members': member_count,
