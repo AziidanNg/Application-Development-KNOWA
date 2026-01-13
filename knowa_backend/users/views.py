@@ -431,8 +431,10 @@ class AdminDashboardStatsView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request, format=None):
-        # 1. Existing Stats
-        total_members = User.objects.count() # Changed to count ALL users as discussed
+        # 1. Total (Counts everyone)
+        total_members = User.objects.count()
+        
+        # 2. Other Stats (Keep existing logic)
         pending_applications = User.objects.filter(member_status=User.MemberStatus.PENDING).count()
         active_events = Event.objects.filter(status=Event.EventStatus.PUBLISHED, end_time__gte=timezone.now()).count()
         
@@ -444,21 +446,20 @@ class AdminDashboardStatsView(APIView):
             submitted_at__month=current_month
         ).aggregate(Sum('amount'))['amount__sum'] or 0.00
 
-        # 2. NEW ANALYTICS: User Composition
-        # We count exactly how many of each type exist
-        public_count = User.objects.filter(member_status='PUBLIC').count()
-        member_count = User.objects.filter(member_status='MEMBER').count()
-        pending_count = User.objects.filter(member_status='PENDING').count()
-        
-        # Determine Admin/Staff count (anyone with is_staff=True)
+        # --- 3. FIXED USER COMPOSITION LOGIC ---
+        # Priority 1: Count Staff First
         staff_count = User.objects.filter(is_staff=True).count()
+
+        # Priority 2: Count others ONLY if they are NOT staff
+        member_count = User.objects.filter(member_status='MEMBER', is_staff=False).count()
+        public_count = User.objects.filter(member_status='PUBLIC', is_staff=False).count()
+        pending_count = User.objects.filter(member_status='PENDING', is_staff=False).count()
 
         data = {
             'total_members': total_members,
             'pending_applications': pending_applications,
             'active_events': active_events,
             'monthly_donations': monthly_donations,
-            # Pass the new breakdown dictionary
             'user_composition': {
                 'Public Users': public_count,
                 'NGO Members': member_count,
