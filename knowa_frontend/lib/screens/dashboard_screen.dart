@@ -27,13 +27,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final AuthService _authService = AuthService();
   final DonationService _donationService = DonationService();
 
-  // This will hold our user data
   Map<String, dynamic>? _userData;
   Map<String, dynamic>? _donationIssue; 
 
-  // This will hold the events
   Future<List<Event>>? _eventsFuture;
-
   late Future<Map<String, dynamic>> _donationGoalFuture;
 
   @override
@@ -44,11 +41,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _checkDonationIssues();
   }
 
-  // --- UPDATED LOAD DATA FUNCTION ---
   void _loadData() async {
-    // 1. Load basic data first (from local storage) so UI shows up fast
     var userData = await _authService.getUserData();
-    
     if (mounted) {
       setState(() {
         _userData = userData;
@@ -56,13 +50,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
     }
 
-    // 2. Fetch FRESH data (Badges!) from the server in the background
     try {
       final freshProfile = await _authService.getFreshProfile();
-      
       if (freshProfile != null && mounted) {
         setState(() {
-          // OVERWRITE the old data with the new server data (containing badges)
           _userData = freshProfile; 
         });
       }
@@ -83,11 +74,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Simulating a check for donation issues
   void _checkDonationIssues() async {
-    // Call the real API
     final issue = await _donationService.getLatestIssue();
-    
     if (mounted) {
       setState(() {
         _donationIssue = issue; 
@@ -130,8 +118,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             
-            // --- MOVED BADGES FROM HERE TO BOTTOM ---
-
             const SizedBox(height: 24),
 
             // "Upcoming Events" Section
@@ -171,7 +157,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red[50], // Light red background
+                    color: Colors.red[50], 
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.red.shade200),
                   ),
@@ -198,21 +184,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       IconButton(
                         icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.red),
                         onPressed: () async {
-                          // 1. Get the data from the alert
                           int id = _donationIssue!['id'];
                           String reason = _donationIssue!['reason'];
 
-                          // 2. Navigate to Fix Screen
                           final result = await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) => FixDonationScreen(donationId: id, reason: reason),
                             ),
                           );
 
-                          // 3. If fixed successfully (result == true), refresh dashboard
                           if (result == true) {
                             setState(() {
-                              _donationIssue = null; // Remove the alert immediately
+                              _donationIssue = null; 
                             });
                           }
                         },
@@ -228,13 +211,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            // This widget checks the user's status and shows the correct card
+            // Updated to remove the placeholder
             _buildApplicationStatusWidget(),
-            const SizedBox(height: 12),
-            _buildAnnouncementCard(
-              title: 'KNOWA EduTalks',
-              text: 'Big dreams start with small stories. Don\'t miss KNOWA EduTalks this December',
-            ),
 
             // --- My Activities Section ---
             const SizedBox(height: 24),
@@ -244,13 +222,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
             
-            // FIXED: Use '?' and '?? 0' to prevent crash
             _buildActivityCard(
               title: 'Events Joined',
               value: (_userData?['total_events'] ?? 0).toString(), 
             ),
 
-            // --- NEW LOCATION: Badge Preview Card (Bottom) ---
+            // --- My Achievements (Badges) ---
             if (_userData != null) ...[
               const SizedBox(height: 32),
               const Text(
@@ -260,13 +237,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 16),
               BadgePreviewCard(
                 earnedBadges: _userData!['badges'] ?? [], 
-                // Using new live fields safely
                 totalEvents: _userData!['total_events'] ?? 0, 
                 totalDonations: _userData!['profile']?['total_donations_made'] ?? 0,
               ),
-              const SizedBox(height: 40), // Extra padding at bottom
+              const SizedBox(height: 40), 
             ],
-            // -------------------------------------------------
           ],
         ),
       ),
@@ -276,7 +251,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // --- HELPER WIDGETS ---
 
   Widget _buildEventList() {
-    // If the user data or events haven't loaded, show a spinner
     if (_eventsFuture == null || _userData == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -295,7 +269,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         List<Event> events = snapshot.data!;
 
         return Container(
-          height: 230, // Set a fixed height for the horizontal list
+          height: 230, 
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: events.length,
