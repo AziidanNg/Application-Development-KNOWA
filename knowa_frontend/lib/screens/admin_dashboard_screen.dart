@@ -10,7 +10,7 @@ import 'package:knowa_frontend/screens/notification_screen.dart';
 import 'package:intl/intl.dart'; 
 import 'package:knowa_frontend/main.dart';
 import 'package:knowa_frontend/screens/admin_interview_history_screen.dart';
-import 'package:fl_chart/fl_chart.dart'; // Ensure this is in pubspec.yaml
+import 'package:fl_chart/fl_chart.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -140,15 +140,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
                     const SizedBox(height: 32),
 
-                    // --- 2. NEW: USER COMPOSITION CHART ---
+                    // --- 2. USER COMPOSITION CHART (UPDATED) ---
                     const Text(
                       "User Composition", 
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
                     ),
                     const SizedBox(height: 16),
                     Container(
-                      height: 220,
-                      padding: const EdgeInsets.all(20),
+                      // REMOVED FIXED HEIGHT so it grows dynamically
+                      padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
@@ -161,7 +161,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ],
                         border: Border.all(color: Colors.grey.shade200),
                       ),
-                      // Check if map exists/is not empty before building
                       child: stats.userComposition.isEmpty 
                           ? const Center(child: Text("No user data available"))
                           : _buildCompositionChart(stats.userComposition),
@@ -268,7 +267,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // --- HELPER FOR PIE CHART ---
+  // --- HELPER FOR PIE CHART (UPDATED LAYOUT) ---
   Widget _buildCompositionChart(Map<String, int> data) {
     // Define colors for specific keys
     final Map<String, Color> categoryColors = {
@@ -278,7 +277,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       'Staff': Colors.purple,
     };
 
-    // Build the sections for the chart
     List<PieChartSectionData> sections = [];
     data.forEach((key, value) {
       if (value > 0) {
@@ -287,7 +285,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             color: categoryColors[key] ?? Colors.grey,
             value: value.toDouble(),
             title: '$value',
-            radius: 50,
+            radius: 45, // Slightly smaller radius to look neat
             titleStyle: const TextStyle(
               fontSize: 14, 
               fontWeight: FontWeight.bold, 
@@ -298,42 +296,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
     });
 
-    return Row(
+    // Use Column to stack Chart ON TOP of Legend
+    return Column(
       children: [
-        // The Chart
-        Expanded(
+        // 1. THE PIE CHART (Top)
+        SizedBox(
+          height: 180, // Dedicated height for just the chart circle
           child: PieChart(
             PieChartData(
               sections: sections,
               centerSpaceRadius: 40,
               sectionsSpace: 2,
+              borderData: FlBorderData(show: false),
             ),
           ),
         ),
-        // The Legend
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        
+        const SizedBox(height: 24), // Space between chart and legend
+
+        // 2. THE LEGEND (Bottom, Wrapped)
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,     // Horizontal space
+          runSpacing: 12,  // Vertical space
           children: data.entries.map((entry) {
             if (entry.value == 0) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Container(
-                    width: 12, height: 12, 
-                    decoration: BoxDecoration(
-                      color: categoryColors[entry.key] ?? Colors.grey,
-                      shape: BoxShape.circle,
-                    ),
+            return Row(
+              mainAxisSize: MainAxisSize.min, 
+              children: [
+                Container(
+                  width: 12, height: 12, 
+                  decoration: BoxDecoration(
+                    color: categoryColors[entry.key] ?? Colors.grey,
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "${entry.key} (${entry.value})",
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "${entry.key} (${entry.value})",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
                   ),
-                ],
-              ),
+                ),
+              ],
             );
           }).toList(),
         ),

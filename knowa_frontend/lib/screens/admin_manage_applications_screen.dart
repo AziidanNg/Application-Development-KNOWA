@@ -30,13 +30,12 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
     });
   }
 
-  // --- UPDATED UPDATE LOGIC (Handles Interview Data) ---
+  // --- LOGIC: UPDATE STATUS ---
   void _updateUser(int userId, String action, String applicationType, {String? reason, String? date, String? link, int? staffId}) async {
     setState(() { _isLoading = true; });
 
     String finalAction = action;
     
-    // Map the simple action to the backend status enum
     if (action == 'Approve') {
       finalAction = applicationType == 'MEMBERSHIP' 
           ? 'APPROVE_MEMBER' 
@@ -59,7 +58,6 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
     setState(() { _isLoading = false; });
 
     if (success) {
-       // --- NEW FEEDBACK ---
        if (action == 'Interview') {
          ScaffoldMessenger.of(context).showSnackBar(
            const SnackBar(
@@ -80,6 +78,7 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
     }
   }
 
+  // --- DIALOG: REJECT REASON ---
   void _showRejectDialog(int userId) {
     String selectedReason = 'Not suitable'; 
 
@@ -139,7 +138,7 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
     );
   }
 
-  // --- NEW: SEARCHABLE STAFF SELECTION DIALOG ---
+  // --- DIALOG: STAFF SELECTION ---
   void _showStaffSelectionDialog(
       List<Map<String, dynamic>> staffList,
       Function(int? staffId) onStaffSelected,
@@ -215,13 +214,12 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
     );
   }
 
-  // --- NEW: SCHEDULE DIALOG WITH SEARCHABLE STAFF ---
+  // --- DIALOG: SCHEDULE INTERVIEW ---
   void _showScheduleDialog(PendingUser user) async {
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
     TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
     String meetingLink = 'https://meet.google.com/abc-defg-hij';
     
-    // Fetch Staff List
     List<Map<String, dynamic>> staffList = await _authService.getStaffList();
     int? selectedStaffId;
     
@@ -236,7 +234,6 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
           title: const Text('Schedule Interview'),
           content: StatefulBuilder(
             builder: (context, setDialogState) {
-              // Helper to get display name
               String staffNameDisplay = selectedStaffId != null 
                   ? staffList.firstWhere((s) => s['id'] == selectedStaffId, orElse: () => {'name': 'Unknown'})['name']
                   : 'Select Staff *';
@@ -250,7 +247,6 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                       const Text('Select Date, Time & Interviewer:'),
                       const SizedBox(height: 16),
                       
-                      // --- SEARCHABLE STAFF BUTTON ---
                       InkWell(
                         onTap: () => _showStaffSelectionDialog(
                           staffList, 
@@ -275,11 +271,9 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                           ),
                         ),
                       ),
-                      // -------------------------------
                       
                       const SizedBox(height: 16),
 
-                      // Date Picker
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text("Date: ${DateFormat('yyyy-MM-dd').format(selectedDate)}"),
@@ -288,14 +282,13 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                           final picked = await showDatePicker(
                             context: context,
                             initialDate: selectedDate,
-                            firstDate: DateTime.now(), // Future dates only
+                            firstDate: DateTime.now(),
                             lastDate: DateTime.now().add(const Duration(days: 365)),
                           );
                           if (picked != null) setDialogState(() => selectedDate = picked);
                         },
                       ),
 
-                      // Time Picker
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text("Time: ${selectedTime.format(context)}"),
@@ -312,7 +305,6 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                       
                       const SizedBox(height: 8),
 
-                      // Link Input
                       TextField(
                         decoration: const InputDecoration(
                           labelText: 'Meeting Link',
@@ -334,7 +326,6 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
             ),
             ElevatedButton(
               onPressed: () {
-                // Check if staff is selected manually since InputDecorator doesn't auto-validate on click
                 if (selectedStaffId == null) {
                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an interviewer')));
                    return;
@@ -350,7 +341,7 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                 _updateUser(
                   user.id, 
                   'Interview', 
-                  'N/A', // App type doesn't matter for interview
+                  'N/A', 
                   date: finalDateTime.toIso8601String(), 
                   link: meetingLink,
                   staffId: selectedStaffId 
@@ -366,7 +357,6 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
 
   @override
   Widget build(BuildContext context) {
-    // 1. GET SYSTEM PADDING (Navigation Bar Height)
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
@@ -387,13 +377,10 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
           List<PendingUser> pendingUsers = snapshot.data!;
 
           return ListView.builder(
-            // 2. APPLY DYNAMIC PADDING
-            // Adds system nav bar height to the bottom so the last item isn't hidden
             padding: EdgeInsets.only(bottom: 16 + bottomPadding), 
             itemCount: pendingUsers.length,
             itemBuilder: (context, index) {
               final user = pendingUsers[index];
-              // Note: Ensure user.dateJoined is the Application Date now, not Reg Date
               final daysAgo = DateTime.now().difference(user.dateJoined).inDays; 
 
               return Card(
@@ -405,6 +392,7 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // USER INFO
                       Row(
                         children: [
                           const CircleAvatar(
@@ -443,26 +431,62 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
                           )
                         ],
                       ),
+                      
                       const SizedBox(height: 16),
+
+                      // --- FIXED ACTION BUTTONS (ICONS ONLY) ---
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildActionButton(
-                            text: 'Approve',
-                            color: Colors.blue.shade700,
-                            onPressed: () => _updateUser(user.id, 'Approve', user.profile.applicationType),
+                          // 1. APPROVE (Green Check)
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => _updateUser(user.id, 'Approve', user.profile.applicationType),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade700,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: const Tooltip(
+                                message: 'Approve',
+                                child: Icon(Icons.check, color: Colors.white),
+                              ),
+                            ),
                           ),
-                          _buildActionButton(
-                            text: 'Reject',
-                            color: Colors.red,
-                            onPressed: () => _showRejectDialog(user.id),
+                          
+                          const SizedBox(width: 12),
+
+                          // 2. REJECT (Red X)
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => _showRejectDialog(user.id),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade600,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: const Tooltip(
+                                message: 'Reject',
+                                child: Icon(Icons.close, color: Colors.white),
+                              ),
+                            ),
                           ),
-                          _buildActionButton(
-                            text: 'Interview',
-                            color: Colors.white,
-                            textColor: Colors.blue.shade700,
-                            borderColor: Colors.blue.shade700,
-                            onPressed: () => _showScheduleDialog(user), 
+
+                          const SizedBox(width: 12),
+
+                          // 3. INTERVIEW (Chat Bubble)
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => _showScheduleDialog(user), 
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.blue.shade700, width: 1.5),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: Tooltip(
+                                message: 'Interview',
+                                child: Icon(Icons.chat_bubble_outline, color: Colors.blue.shade700),
+                              ),
+                            ),
                           ),
                         ],
                       )
@@ -473,34 +497,6 @@ class _AdminManageApplicationsScreenState extends State<AdminManageApplicationsS
             },
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required String text,
-    required Color color,
-    required VoidCallback onPressed,
-    Color textColor = Colors.white,
-    Color? borderColor,
-  }) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: textColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: borderColor != null
-                  ? BorderSide(color: borderColor)
-                  : BorderSide.none,
-            ),
-          ),
-          child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
       ),
     );
   }
