@@ -431,7 +431,8 @@ class AdminDashboardStatsView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request, format=None):
-        total_members = User.objects.filter(Q(member_status=User.MemberStatus.MEMBER) | Q(is_staff=True)).count()
+        # 1. Existing Stats
+        total_members = User.objects.count() # Changed to count ALL users as discussed
         pending_applications = User.objects.filter(member_status=User.MemberStatus.PENDING).count()
         active_events = Event.objects.filter(status=Event.EventStatus.PUBLISHED, end_time__gte=timezone.now()).count()
         
@@ -443,11 +444,27 @@ class AdminDashboardStatsView(APIView):
             submitted_at__month=current_month
         ).aggregate(Sum('amount'))['amount__sum'] or 0.00
 
+        # 2. NEW ANALYTICS: User Composition
+        # We count exactly how many of each type exist
+        public_count = User.objects.filter(member_status='PUBLIC').count()
+        member_count = User.objects.filter(member_status='MEMBER').count()
+        pending_count = User.objects.filter(member_status='PENDING').count()
+        
+        # Determine Admin/Staff count (anyone with is_staff=True)
+        staff_count = User.objects.filter(is_staff=True).count()
+
         data = {
             'total_members': total_members,
             'pending_applications': pending_applications,
             'active_events': active_events,
-            'monthly_donations': monthly_donations
+            'monthly_donations': monthly_donations,
+            # Pass the new breakdown dictionary
+            'user_composition': {
+                'Public Users': public_count,
+                'NGO Members': member_count,
+                'Pending': pending_count,
+                'Staff': staff_count
+            }
         }
         return Response(data, status=status.HTTP_200_OK)
 

@@ -5,12 +5,12 @@ import 'package:knowa_frontend/screens/login_screen.dart';
 import 'package:knowa_frontend/screens/admin_manage_applications_screen.dart';
 import 'package:knowa_frontend/screens/admin_pending_payments_screen.dart';
 import 'package:knowa_frontend/screens/admin_pending_donations_screen.dart';
-import 'package:knowa_frontend/screens/admin_manage_events_screen.dart';
 import 'package:knowa_frontend/models/admin_stats.dart'; 
 import 'package:knowa_frontend/screens/notification_screen.dart';
 import 'package:intl/intl.dart'; 
 import 'package:knowa_frontend/main.dart';
 import 'package:knowa_frontend/screens/admin_interview_history_screen.dart';
+import 'package:fl_chart/fl_chart.dart'; // Ensure this is in pubspec.yaml
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -31,13 +31,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _handleLogout(BuildContext context) async {
-    // Call the service to delete tokens
     await _authService.logout(); 
     
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          // Now AppRootWrapper will be recognized because of the import above
           builder: (context) => const AppRootWrapper(child: LoginScreen()), 
         ),
         (Route<dynamic> route) => false, 
@@ -48,8 +46,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final currencyFormatter = NumberFormat.currency(locale: 'en_MY', symbol: 'RM');
-    
-    // 1. GET SYSTEM PADDING (Navigation Bar Height)
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
@@ -58,7 +54,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          // --- Notification Button ---
           IconButton(
             icon: const Icon(Icons.notifications_none_outlined, color: Colors.black),
             onPressed: () {
@@ -67,7 +62,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               );
             },
           ),
-          
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black),
             onPressed: () => _handleLogout(context),
@@ -76,13 +70,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
-        // 2. APPLY DYNAMIC PADDING
-        // Replaces const EdgeInsets.all(16.0)
         padding: EdgeInsets.only(
           left: 16.0,
           right: 16.0,
           top: 16.0,
-          bottom: 16.0 + bottomPadding, // <--- The Fix: Adds nav bar height
+          bottom: 16.0 + bottomPadding,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,36 +100,71 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
                 final stats = snapshot.data!;
 
-                return GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildStatCard(
-                      'Total Members', 
-                      stats.totalMembers.toString(), 
-                      '+10%', 
-                      Colors.green
+                    // --- 1. STATISTICS CARDS ---
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      children: [
+                        _buildStatCard(
+                          'Total Members', 
+                          stats.totalMembers.toString(), 
+                          '+10%', 
+                          Colors.green
+                        ),
+                        _buildStatCard(
+                          'Pending Apps', 
+                          stats.pendingApplications.toString(), 
+                          '-5%', 
+                          Colors.red
+                        ),
+                        _buildStatCard(
+                          'Active Events', 
+                          stats.activeEvents.toString(), 
+                          '+20%', 
+                          Colors.green
+                        ),
+                        _buildStatCard(
+                          'Monthly Donations', 
+                          currencyFormatter.format(stats.monthlyDonations), 
+                          '+15%', 
+                          Colors.green
+                        ),
+                      ],
                     ),
-                    _buildStatCard(
-                      'Pending Applications', 
-                      stats.pendingApplications.toString(), 
-                      '-5%', 
-                      Colors.red
+
+                    const SizedBox(height: 32),
+
+                    // --- 2. NEW: USER COMPOSITION CHART ---
+                    const Text(
+                      "User Composition", 
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
                     ),
-                    _buildStatCard(
-                      'Active Events', 
-                      stats.activeEvents.toString(), 
-                      '+20%', 
-                      Colors.green
-                    ),
-                    _buildStatCard(
-                      'Monthly Donations', 
-                      currencyFormatter.format(stats.monthlyDonations), 
-                      '+15%', 
-                      Colors.green
+                    const SizedBox(height: 16),
+                    Container(
+                      height: 220,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05), 
+                            blurRadius: 10, 
+                            offset: const Offset(0, 4)
+                          )
+                        ],
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      // Check if map exists/is not empty before building
+                      child: stats.userComposition.isEmpty 
+                          ? const Center(child: Text("No user data available"))
+                          : _buildCompositionChart(stats.userComposition),
                     ),
                   ],
                 );
@@ -145,6 +172,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
 
             const SizedBox(height: 32),
+            
+            // --- 3. QUICK ACTIONS ---
             const Text(
               'Quick Actions',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -236,6 +265,79 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ),
+    );
+  }
+
+  // --- HELPER FOR PIE CHART ---
+  Widget _buildCompositionChart(Map<String, int> data) {
+    // Define colors for specific keys
+    final Map<String, Color> categoryColors = {
+      'Public Users': Colors.blue.shade300,
+      'NGO Members': Colors.green,
+      'Pending': Colors.orange,
+      'Staff': Colors.purple,
+    };
+
+    // Build the sections for the chart
+    List<PieChartSectionData> sections = [];
+    data.forEach((key, value) {
+      if (value > 0) {
+        sections.add(
+          PieChartSectionData(
+            color: categoryColors[key] ?? Colors.grey,
+            value: value.toDouble(),
+            title: '$value',
+            radius: 50,
+            titleStyle: const TextStyle(
+              fontSize: 14, 
+              fontWeight: FontWeight.bold, 
+              color: Colors.white
+            ),
+          ),
+        );
+      }
+    });
+
+    return Row(
+      children: [
+        // The Chart
+        Expanded(
+          child: PieChart(
+            PieChartData(
+              sections: sections,
+              centerSpaceRadius: 40,
+              sectionsSpace: 2,
+            ),
+          ),
+        ),
+        // The Legend
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: data.entries.map((entry) {
+            if (entry.value == 0) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Container(
+                    width: 12, height: 12, 
+                    decoration: BoxDecoration(
+                      color: categoryColors[entry.key] ?? Colors.grey,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "${entry.key} (${entry.value})",
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
