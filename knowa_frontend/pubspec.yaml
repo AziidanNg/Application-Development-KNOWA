@@ -46,6 +46,7 @@ dependencies:
   file_picker: ^10.3.6
   mime: ^2.0.0
   table_calendar: ^3.1.0  # The standard for Flutter calendars
+  fl_chart: ^0.68.0
   
   # --- NEW: Notification Dependencies ---
   flutter_local_notifications: ^17.2.2
